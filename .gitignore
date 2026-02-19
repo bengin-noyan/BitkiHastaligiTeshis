@@ -1,0 +1,6 @@
+.venv/
+.venv1/
+data/
+.idea/
+__pycache__/
+*.h5
