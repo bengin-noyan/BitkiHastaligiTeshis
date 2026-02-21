@@ -1,32 +1,64 @@
 import tensorflow as tf
+from tensorflow.keras.preprocessing import image
 import numpy as np
-import os
 import matplotlib.pyplot as plt
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+import os
 
-# 1. Model ve Veri Yolu
-model = tf.keras.models.load_model('bitki_hastaligi_fine_tuned.h5')
+# 1. AYARLAR VE YOLLAR
+model_path = 'en_iyi_model_final.h5'
 data_dir = "data/final_dataset/train"
+test_image_path = "test_resmi.jpg"
+
+# 2. SINIF İSİMLERİNİ ÇEKME
 class_names = sorted(os.listdir(data_dir))
-img_path = 'sagliklielma.jpg'
+
+# 3. SİSTEMİ AYAĞA KALDIR
+print("\n--- Sistem ayağa kaldırılıyor, KDS Modeli Yükleniyor... ---")
+model = tf.keras.models.load_model(model_path)
+print("--- Model Yüklendi! Teşhis Başlıyor... ---\n")
 
 
-img = tf.keras.utils.load_img(img_path, target_size=(224, 224))
-img_array = tf.keras.utils.img_to_array(img)
-img_array = np.expand_dims(img_array, axis=0)
-img_array = preprocess_input(img_array) # Modeli "anlayacağı" dile çevirir [-1, 1]
+# 4. TEŞHİS VE GÖRSELLEŞTİRME FONKSİYONU
+def predict_disease_and_show(img_path):
+    try:
+        # Resmi model için hazırla
+        img = image.load_img(img_path, target_size=(224, 224))
+        img_array = image.img_to_array(img)
+        img_array = tf.expand_dims(img_array, 0)
 
-# 3. Tahmin
-predictions = model.predict(img_array)
-score = tf.nn.softmax(predictions[0])
-result_index = np.argmax(score)
-result_name = class_names[result_index]
-confidence = 100 * np.max(score)
+        # Tahmin yap
+        predictions = model.predict(img_array)
+        score = predictions[0]
+
+        # Sonuçları hesapla
+        predicted_class = class_names[np.argmax(score)]
+        confidence = 100 * np.max(score)
+
+        # Terminal Çıktısı
+        print(f"🌿 TEŞHİS SONUCU 🌿")
+        print(f"------------------------")
+        print(f"Görsel: {img_path}")
+        print(f"Teşhis: {predicted_class}")
+        print(f"Güven Oranı: %{confidence:.2f}")
+        print(f"------------------------\n")
 
 
-print(f"Tahmin: {result_name} (%{confidence:.2f})")
+        plt.figure(figsize=(8, 6))
 
-plt.imshow(img)
-plt.title(f"Tahmin: {result_name} (%{confidence:.2f})")
-plt.axis('off')
-plt.show()
+        plt.imshow(img)
+
+
+        title_color = 'green' if confidence > 80 else 'red'
+        plt.title(f"Sistem Kararı: {predicted_class}\nGüven Oranı: %{confidence:.2f}",
+                  fontsize=14, color=title_color, fontweight='bold')
+
+        plt.axis('off')
+        plt.tight_layout()
+        plt.show()
+
+    except Exception as e:
+        print(f"HATA: Resim yüklenirken veya işlenirken bir sorun oluştu: {e}")
+
+
+
+predict_disease_and_show(test_image_path)
