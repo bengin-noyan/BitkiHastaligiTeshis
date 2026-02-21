@@ -29,4 +29,4 @@ print(f"Tahmin: {result_name} (%{confidence:.2f})")
 plt.imshow(img)
 plt.title(f"Tahmin: {result_name} (%{confidence:.2f})")
 plt.axis('off')
-plt.show() # Bu komut sayesinde resim ekrana gelecek!
+plt.show()

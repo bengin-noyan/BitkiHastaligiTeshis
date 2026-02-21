@@ -1,32 +1,38 @@
-# 🌿 Bitki Hastalığı Teşhis Sistemi ve Tarımsal Verimlilik Asistanı (MobileNetV2)
+🌿 Tarımsal Verimlilik Analizi: Derin Öğrenme ile Bitki Hastalıkları Teşhisi
+Bu proje, sürdürülebilir tarım ve dijital dönüşüm ilkeleri çerçevesinde, bitki hastalıklarını yüksek doğrulukla teşhis ederek tarımsal verimliliği artırmayı hedefleyen bir Karar Destek Sistemi (KDS) modelidir.
 
-Bu proje, derin öğrenme teknikleri kullanılarak bitki yapraklarındaki hastalıkları otonom bir şekilde teşhis etmek için geliştirilmiştir.
+🚀 Proje Özeti ve Başarı Milatları
+Yönetim Bilişim Sistemleri perspektifiyle geliştirilen bu model, sadece bir sınıflandırma aracı değil, aynı zamanda tarım arazilerindeki ürün kayıplarını minimize etmek için tasarlanmış veriye dayalı bir analiz sistemidir.
 
-##  Proje Durumu
-* **Model:** MobileNetV2 (Transfer Learning)
-* **Başarı Oranı:** %83,94 Doğrulama Başarısı (Validation Accuracy)
-* **Veri Seti:** 38 farklı bitki ve hastalık kategorisi
+Güncel Başarı Oranı: %95,60 Validation Accuracy (Doğrulama Başarısı).
 
-## Teknik Detaylar
-Projede TensorFlow ve Keras kullanılarak görüntü sınıflandırma yapılmıştır. Model, eğitim sürecinde 10 epoch sonunda yüksek bir kararlılığa ulaşmıştır. Şu an etiket eşleşmeleri ve modelin elma/mısır ayrımı üzerindeki ince ayarları (fine-tuning) devam etmektedir.
+Önceki Model: %87,14 (MobileNetV2 tabanlı).
 
----
-Bengin Noyan 
+İyileştirme: Hibrit yaklaşım ve EfficientNetB0 mimarisi ile %8,46'lık net başarı artışı sağlanmıştır.
 
-Güncelleme: Akademik Optimizasyon ve Model Hassas Ayarı (Fine-Tuning)
-Projenin ikinci aşamasında, modelin genel başarısını artırmak ve türler arasındaki kararsızlığı (özellikle elma ve mısır karmaşasını) gidermek için Hassas Ayar (Fine-Tuning) yapılmıştır.
+🛠️ Teknik Mimari ve Teknolojiler
+Model, modern derin öğrenme teknikleri ve "Transfer Learning" (Transfer Öğrenme) stratejisi üzerine inşa edilmiştir.
 
- Performans Karşılaştırması
-Yapılan optimizasyonlar sonucunda modelin doğruluk oranındaki değişim aşağıdadır:
+Ana Mimari: EfficientNetB0 (ImageNet ağırlıkları ile).
 
-İlk Model Başarısı: %83.94
+Veri Seti: 38 farklı bitki ve hastalık sınıfını içeren, toplam 43.427 görselden oluşan geniş kapsamlı veri seti.
 
-Optimize Edilmiş Model Başarısı: %87.14
+Hibrit Yaklaşım: Modelin genel başarısını ve gerçek dünya koşullarına dayanıklılığını artırmak için Data Augmentation (Veri Artırımı) ve Transfer Learning teknikleri birleştirilmiştir.
 
-Kayıp (Loss) Oranı: 0.81'den 0.42'ye düşürülmüştür.
+Optimizasyon: Adam Optimizer (LR: 0.001) ve Categorical Crossentropy kayıp fonksiyonu kullanılmıştır.
 
- Hata Giderme ve Test Sonucu
-İlk sürümde sağlıklı elma yaprağını mısır pası ile karıştıran etiket hatası, MobileNetV2 mimarisinin son katmanlarının yeniden eğitilmesiyle (unfreezing) çözülmüştür.
+📊 Eğitim Sonuçları (Epoch 7 - Peak Performance)
+Model, 7. eğitim adımında (epoch) en yüksek performansına ulaşarak Karar Destek Sistemleri için gerekli olan güvenilirlik eşiğini aşmıştır:
 
-Son Test Çıktısı:
-(Not: Model artık elmayı %90+ güvenle doğru teşhis etmektedir.)
+Validation Accuracy: 0.9560
+
+Validation Loss: 0.1393
+
+Eğitim Stratejisi: Aşırı öğrenmeyi (overfitting) önlemek için %30 Dropout ve Early Stopping (Erken Durdurma) mekanizmaları uygulanmıştır.
+
+🔮 Gelecek Çalışmalar
+Veri Çeşitliliği: Mevcut 38 sınıfa stratejik öneme sahip bitki türlerinin (örneğin: soğan) eklenmesi.
+
+Mobil Entegrasyon: Çiftçilerin tarlada anlık teşhis koyabilmesi için modelin bir mobil uygulama üzerinden servis edilmesi.
+
+Maliyet Analizi: Teşhis edilen hastalıkların ekonomik etkilerini hesaplayan bir maliyet modülünün sisteme entegre edilmesi.

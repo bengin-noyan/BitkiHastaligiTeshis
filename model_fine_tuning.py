@@ -51,7 +51,7 @@ val_ds = tf.keras.utils.image_dataset_from_directory(
     batch_size=32
 )
 ""
-# --- Performans İyileştirmesi (Opsiyonel ama Önerilir) ---
+
 AUTOTUNE = tf.data.AUTOTUNE
 train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
 val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
