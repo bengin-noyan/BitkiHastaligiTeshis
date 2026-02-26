@@ -7,7 +7,7 @@ import os
 # 1. AYARLAR VE YOLLAR
 model_path = 'en_iyi_model_final.h5'
 data_dir = "data/final_dataset/train"
-test_image_path = "test_resmi.jpg"
+test_image_path = "testedelim_resim.jpg"
 
 # 2. SINIF İSİMLERİNİ ÇEKME
 class_names = sorted(os.listdir(data_dir))
@@ -33,6 +33,26 @@ def predict_disease_and_show(img_path):
         # Sonuçları hesapla
         predicted_class = class_names[np.argmax(score)]
         confidence = 100 * np.max(score)
+
+        # --- YENİ EKLENEN KISIM (THRESHOLD) ---
+        plt.figure(figsize=(8, 6))
+        plt.imshow(img)
+
+        # Eğer güven oranı %60'tan düşükse:
+        if confidence < 60:
+            plt.title(f"Sistem Emin Değil\nEn Yakın Tahmin: {predicted_class} (%{confidence:.2f})",
+                      fontsize=14, color='orange', fontweight='bold')
+            print(f"⚠️ UYARI: Model bu resimden emin olamadı (Güven: %{confidence:.2f})")
+        else:
+            # Güven yüksekse normal çalışsın
+            title_color = 'green' if "healthy" in predicted_class.lower() else 'red'
+            plt.title(f"Sistem Kararı: {predicted_class}\nGüven Oranı: %{confidence:.2f}",
+                      fontsize=14, color=title_color, fontweight='bold')
+
+        plt.axis('off')
+        plt.tight_layout()
+        plt.show()
+        # --------------------------------------
 
         # Terminal Çıktısı
         print(f"🌿 TEŞHİS SONUCU 🌿")

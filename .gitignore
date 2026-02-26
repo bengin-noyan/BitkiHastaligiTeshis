@@ -4,3 +4,19 @@ data/
 .idea/
 __pycache__/
 *.h5
+
+# Sanal Ortamlar
+.venv/
+.venv1/
+
+# Veri Setleri ve Analiz Sonuçları
+Plant-Disease-1/
+runs/
+data/
+
+# Çok Büyük Model Dosyaları (100MB Üstü)
+*.h5
+
+# PyCharm ve Python Çöp Dosyaları
+.idea/
+__pycache__/
