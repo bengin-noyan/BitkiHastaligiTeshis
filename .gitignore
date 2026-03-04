@@ -20,3 +20,6 @@ data/
 # PyCharm ve Python Çöp Dosyaları
 .idea/
 __pycache__/
+
+# YOLOv8 Model Dosyaları (100MB Üstü)
+*.pt
