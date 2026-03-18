@@ -1,34 +1,30 @@
 # 🌿 Bitki Hastalıkları Teşhis Sistemi ve Tarımsal Verimlilik Analizi (YOLOv8)
 
-Bu proje, domates bitkilerindeki hastalıkları ve besin eksikliklerini yapay zeka (derin öğrenme) kullanarak anlık olarak tespit etmek amacıyla geliştirilmiştir. 
+Bu proje, bitkilerdeki hastalıkları ve anomalileri yapay zeka (derin öğrenme) kullanarak anlık ve yüksek doğrulukla tespit etmek amacıyla geliştirilmiştir. Sistem, Yönetim Bilişim Sistemleri (YBS) bitirme çalışmaları kapsamında "Tarımsal Verimlilik Analizi ve İlaçlama Optimizasyonu" algoritmalarının ana teşhis motoru olarak tasarlanmış ve optimize edilmiştir.
 
 ## 🚀 Proje Hakkında
-Bu çalışma kapsamında, farklı bitki hastalıkları ve kalsiyum eksikliği gibi durumları içeren kapsamlı bir veri seti kullanılmıştır. Model, Yönetim Bilişim Sistemleri (YBS) bitirme çalışmaları kapsamında optimize edilmiştir.
+Sistemin ilk versiyonlarında spesifik bitkiler (örn. domates) üzerine çalışılmış olup, nihai versiyonda kapasite devasa bir boyuta taşınmıştır. Model şu an **16.600 fotoğraflık** kapsamlı PlantDoc veri seti üzerinde çalışmakta ve elma karalekesinden yaban mersini hastalıklarına kadar **29 farklı sınıfı** tanıyabilmektedir.
 
-## 📊 Model Performansı (V2 - Kıdemli Model)
-Model, Google Colab üzerinde T4 GPU kullanılarak 50 epoch boyunca eğitilmiştir.
+## 🏆 Model Performansı (V4 - Şampiyon Model / Güncel)
+Sistemin zorlu saha koşullarındaki tespit hassasiyetini ve güven skorunu (confidence) zirveye taşımak amacıyla, modelin mimarisi ve eğitim parametreleri baştan aşağı yenilenmiştir.
 
-## 📊 Model Performansı (V3 - Gelişmiş Görüş Modeli)
-
-Sistemin zorlu saha koşullarındaki tespit hassasiyetini artırmak amacıyla **YOLOv8 Medium (yolov8m)** mimarisine geçiş yapılmıştır. Model, Google Colab üzerinde T4 GPU kullanılarak 90 epoch boyunca eğitilmiş ve Erken Durdurma (Early Stopping) ile aşırı öğrenmesi engellenmiştir.
-
-* **Mimari:** YOLOv8 Medium 
-* **Eğitim Süresi:** 90 Epoch (Early Stopping ile optimize edildi)
-* **Öne Çıkan Gelişmeler:** Modelin tespit güveninde (confidence score) ciddi bir artış sağlanmıştır. Önceki modelin %34 emin olabildiği silik ve zorlu anomali bölgeleri, V3 modeli tarafından %59 netlikle (yaklaşık 2 kat daha yüksek bir özgüvenle) tespit edilebilmektedir.
-* **Sistemdeki Rolü:** Projenin asıl odak noktası olan "Tarımsal Verimlilik Analizi ve İlaçlama Optimizasyonu" algoritmalarının ana teşhis motoru olarak kullanılmaktadır.
+* **Mimari:** YOLOv8 Medium (`yolov8m.pt`) - Yüksek parametreli derin öğrenme ağı.
+* **Eğitim Ortamı:** Kaggle (GPU P100) - 12 saatlik kesintisiz ağır eğitim (150 Epoch hedefli).
+* **Görüntü İşleme:** Modelin minik yaprak lekelerini (scab/rust vb.) büyüteçle görebilmesi için görüntü boyutu endüstri standardının üzerine, `imgsz=800` piksel çözünürlüğüne çıkarılmıştır.
+* **Öne Çıkan Gelişmeler (Büyük Sıçrama):** Eski versiyonlarda (V3) %59 seviyelerinde kalan güven skoru, bu modelde **%94 (0.94 Confidence)** gibi altın standart kabul edilen bir seviyeye ulaşmıştır. Sistem sadece ana hastalığı bulmakla kalmaz, arka plandaki diğer yaprakların türünü ve başlangıç seviyesindeki hastalıkları da eşzamanlı olarak başarıyla sınıflandırır.
 
 ## 🛠️ Kullanılan Teknolojiler
 * **Dil:** Python
-* **Yapay Zeka:** Ultralytics YOLOv8
-* **Veri Seti:** Roboflow (Plant-Disease-1)
-* **Ortam:** VS Code & Google Colab
+* **Yapay Zeka:** Ultralytics YOLOv8 (Medium)
+* **Veri Seti:** Roboflow (PlantDoc - 29 Sınıf, 16.6k Görsel)
+* **Ortam:** VS Code & Kaggle (Model Eğitimi)
 
 ## 💻 Nasıl Çalıştırılır?
-Projeyi yerel bilgisayarınızda test etmek için:
+Projeyi yerel bilgisayarınızda test etmek için terminale aşağıdaki komutu girmeniz yeterlidir:
 
-1. Gerekli kütüphaneleri kurun: `pip install ultralytics`
-2. Modeli çalıştırın:
-```python
-from ultralytics import YOLO
-model = YOLO('best.pt')
-results = model.predict(source='test_gorseli.jpg', save=True)
+```bash
+# Gerekli kütüphanelerin kurulumu
+pip install ultralytics
+
+# Terminal üzerinden görsel testi (Örnek)
+yolo task=detect mode=predict model=plantdoc_150epoch.pt conf=0.25 source="test_gorseli.jpg"

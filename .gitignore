@@ -23,3 +23,11 @@ __pycache__/
 
 # YOLOv8 Model Dosyaları (100MB Üstü)
 *.pt
+
+.venv1/
+__pycache__/
+runs/
+
+datasets/
+.vs/
+*.jpg
