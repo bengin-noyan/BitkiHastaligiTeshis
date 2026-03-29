@@ -10,7 +10,6 @@ st.set_page_config(page_title="Tarımsal Verimlilik Analizi", page_icon="🌿", 
 def load_model():
     # Model 148MB olduğu için Drive'dan indirme mantığı buraya eklenecek (Deploy aşamasında)
     return YOLO("plantdoc_150epoch.pt")
-
 model = load_model()
 
 # 3. Sol Menü (Sidebar)
@@ -54,35 +53,31 @@ if uploaded_file is not None:
             identified_plants = set()
             if len(detected_classes) > 0:
                 for cls_name in detected_classes:
-                    # Sınıf adının ilk kelimesini al (Örn: "Apple Scab Leaf" -> "Apple")
                     plant_name = cls_name.split()[0]
                     identified_plants.add(plant_name)
             
-            # Bitki adı raporun en başına yazılır (Eğer tespit edildiyse)
             if identified_plants:
-                # İngilizce isimleri Türkçeye çevirme (Basit Sözlük)
-                translate_dict = {"Apple": "Elma", "Tomato": "Domates", "Grape": "Üzüm", "Corn": "Mısır", "Potato": "Patates"}
+                translate_dict = {"Apple": "Elma", "Tomato": "Domates", "Grape": "Üzüm", "Corn": "Mısır", "Potato": "Patates", "Cherry": "Kiraz", "Strawberry": "Çilek"}
                 tr_plants = [translate_dict.get(p, p) for p in identified_plants]
                 plant_str = ", ".join(tr_plants)
                 st.info(f"🔎 Analiz Edilen Bitki Türü: **{plant_str}**")
             # -----------------------------------------------------
 
-            # Eğer hiçbir şey bulamadıysa
+            # 🚨 GÜVENLİK DUVARI: EĞER GÖRSELDE BİTKİ YOKSA (Araba, İnsan vb.)
             if len(detected_classes) == 0:
-                st.success("✅ Görüntüde herhangi bir anomali tespit edilmedi. Bitki sağlıklı.")
-                st.metric("Tahmini Verim Kaybı Riski", "%0", "Tehdit Yok")
-                st.info("🔎 Bitki Türü: Model resimde belirgin bir yaprak dokusu tespit edemediği için bitki türü belirlenemedi.")
+                st.warning("⚠️ Tanımlanamayan Nesne: Sistem bu görselde analiz edilebilir bir tarım ürünü veya yaprak tespit edemedi. Lütfen geçerli bir bitki fotoğrafı yükleyin.")
+                st.metric("Tahmini Verim Kaybı Riski", "Belirsiz", "Analiz Yapılamadı", delta_color="off")
             
             # Tespit varsa
             else:
-                hastalik_kelimeleri = ["scab", "rust", "mold", "virus", "spot", "blight", "curl", "rot"]
+                hastalik_kelimeleri = ["scab", "rust", "mold", "virus", "spot", "blight", "curl", "rot", "mildew", "scorch"]
                 hastalikli_yapraklar = [sinif for sinif in detected_classes if any(k in sinif.lower() for k in hastalik_kelimeleri)]
                 
-                # Sadece sağlıklı yaprak tespit edildiyse (Örn: "Apple Leaf", "Tomato healthy")
+                # Sadece sağlıklı yaprak tespit edildiyse
                 if len(hastalikli_yapraklar) == 0:
                     plant_str = ", ".join([translate_dict.get(p, p) for p in identified_plants]) if identified_plants else "Bitki"
-                    st.success(f"✅ Analiz sonucu: Tespit edilen **{plant_str}** yaprakları sağlıklı kategorisinde.")
-                    st.metric("Tahmini Verim Kaybı Riski", "%0", "Tehdit Yok")
+                    st.success(f"✅ Analiz sonucu: Tespit edilen **{plant_str}** yaprakları tamamen sağlıklı kategorisinde.")
+                    st.metric("Tahmini Verim Kaybı Riski", "%0", "Tehdit Yok", delta_color="normal")
                 
                 # Gerçekten hastalık bulduysa
                 else:
@@ -97,12 +92,11 @@ if uploaded_file is not None:
                     benzersiz_hastaliklar = set(hastalikli_yapraklar)
                     for hastalik in benzersiz_hastaliklar:
                         h = hastalik.lower()
-                        if "scab" in h or "rust" in h or "mold" in h:
+                        if "scab" in h or "rust" in h or "mold" in h or "mildew" in h:
                             st.error(f"**{hastalik}**: Mantar (Fungal) kaynaklı enfeksiyon. Acil Fungisit uygulaması yapılmalıdır.")
                         elif "virus" in h or "curl" in h:
                             st.error(f"**{hastalik}**: Virüs kaynaklı anomali. Taşıyıcı böceklerle mücadele edilmelidir.")
-                        elif "spot" in h or "blight" in h:
-                            st.error(f"**{hastalik}**: Bakteriyel/Fungal lekelenme. Bakır içerikli ilaçlar önerilir.")
-
+                        elif "spot" in h or "blight" in h or "scorch" in h or "rot" in h:
+                            st.error(f"**{hastalik}**: Bakteriyel/Fungal lekelenme veya çürüme. Gerekli zirai ilaçlar önerilir.")
 else:
     st.info("👈 Lütfen analize başlamak için sol menüden bir yaprak fotoğrafı yükleyin.")
