@@ -14,7 +14,7 @@ def modeli_yukle():
 
 model = modeli_yukle()
 
-# 2. BİLGİ TABANI (Kusursuz Türkçe ve Kurumsal Dil)
+# 2. BİLGİ TABANI (Türkçe ve Kurumsal Dil)
 BILGI_TABANI = {
     "healthy": {
         "bitki": "Genel (Türü Belirtilmemiş)",
