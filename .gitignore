@@ -34,3 +34,9 @@ datasets/
 
 # Firebase Secret Key
 firebase_key.json
+
+venv1/
+__pycache__/
+*.pt
+
+*.db
