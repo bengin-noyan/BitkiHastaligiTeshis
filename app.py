@@ -1,6 +1,8 @@
 import sqlite3
 from datetime import datetime
 import streamlit as st
+import pandas as pd
+import plotly.express as px
 from ultralytics import YOLO
 from PIL import Image
 import firebase_admin
@@ -60,6 +62,17 @@ veritabani_kurulumu()
 # ────────────────────────────────────────────────────────────
 
 st.set_page_config(page_title="Tarımsal Analiz Sistemi", page_icon="🌿", layout="wide")
+
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 1rem !important;
+            margin-top: 0 !important;
+        }
+        header {visibility: hidden;} /* Streamlit'in üstteki görünmez header boşluğunu yok eder */
+    </style>
+    """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════
 #  GLOBAL CSS — Minimalist tek renk tema (Senin Tasarımın)
@@ -484,6 +497,87 @@ def login_page():
     .lp-pill b { color: #0f172a !important; font-weight: 700; }
     .lp-footer-note { margin-top: 28px; font-size: 0.76rem; color: #94a3b8 !important; text-align: center; }
     
+    /* ─── Landing Page Bölümleri ─── */
+    .ls-section-tag {
+        display: inline-block;
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        border-radius: 100px;
+        padding: 4px 14px;
+        font-size: 0.7rem;
+        color: #065f46 !important;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 14px;
+    }
+    .ls-section-title {
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: #0f172a !important;
+        letter-spacing: -0.03em;
+        margin: 0 0 12px 0;
+        line-height: 1.2;
+    }
+    .ls-section-lede {
+        font-size: 1rem;
+        color: #64748b !important;
+        font-weight: 400;
+        line-height: 1.6;
+        margin: 0 0 8px 0;
+        max-width: 720px;
+    }
+    .ls-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 26px 24px;
+        height: 100%;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+    .ls-card:hover {
+        border-color: #a7f3d0;
+        transform: translateY(-2px);
+    }
+    .ls-step-num {
+        width: 36px;
+        height: 36px;
+        background: #7DA78C;
+        color: #ffffff !important;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        font-weight: 800;
+        margin-bottom: 14px;
+    }
+    .ls-feature-icon {
+        width: 44px;
+        height: 44px;
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 14px;
+    }
+    .ls-card-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0f172a !important;
+        margin: 0 0 6px 0;
+        letter-spacing: -0.01em;
+    }
+    .ls-card-text {
+        font-size: 0.86rem;
+        color: #64748b !important;
+        line-height: 1.55;
+        margin: 0;
+    }
+    
     .stTabs [data-baseweb="tab-list"] { gap: 10px; justify-content: center; }
     .stTabs [data-baseweb="tab"] { padding-top: 10px; padding-bottom: 10px; }
     </style>
@@ -492,7 +586,7 @@ def login_page():
     _, c, _ = st.columns([1, 2, 1])
     with c:
         st.markdown(
-            '<div style="text-align:center;padding:40px 0 20px 0;">'
+            '<div style="text-align:center;padding:0 0 16px 0;">'
             '<span class="lp-badge"><span class="lp-badge-dot"></span> Pamukkale Üniversitesi · YBS Bitirme Projesi</span>'
             '</div>',
             unsafe_allow_html=True
@@ -508,7 +602,6 @@ def login_page():
             ve tarımsal verim analizi platformu</div>
         </div>
         """, unsafe_allow_html=True)
-        st.write("")
 
         # ─── SEKMELER (TABS) BAŞLANGICI ───
         tab_giris, tab_kayit = st.tabs(["Giriş Yap", "Kayıt Ol"])
@@ -570,15 +663,202 @@ def login_page():
             <span class="lp-pill"><b>38</b> Hastalık Sınıfı</span>
         </div>
         <div class="lp-footer-note">
-            © 2026 · Tarımsal Analiz Sistemi · Tüm hakları saklıdır
+            ↓ Sistem hakkında daha fazla bilgi için aşağı kaydır
         </div>
         """, unsafe_allow_html=True)
+
+    # ══════════════════════════════════════════════════════
+    #  LANDING PAGE — Tam Genişlikte Vitrin Bölümleri
+    # ══════════════════════════════════════════════════════
+    st.write("")
+    st.write("")
+    st.divider()
+    st.write("")
+
+    # ─────────────────────────────────────────────────────
+    #  BÖLÜM 1 — PROJEMİZ HAKKINDA
+    # ─────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="text-align:center;margin-bottom:32px;">
+        <span class="ls-section-tag">PROJEMİZ HAKKINDA</span>
+        <h2 class="ls-section-title">Tarımda Yapay Zekâ Devrimi</h2>
+        <p class="ls-section-lede" style="margin:0 auto;">
+            Tarımsal Analiz Sistemi; üretici, ziraat mühendisi ve araştırmacılar için geliştirilmiş, 
+            görüntü tabanlı hastalık teşhisi yapan bir karar destek platformudur. 
+            Yönetim Bilişim Sistemleri lisans bitirme projesi kapsamında, gerçek tarım sahasında 
+            kullanılabilir bir prototip olarak tasarlanmıştır.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    h1, h2 = st.columns(2, gap="large")
+    with h1:
+        st.markdown("""
+        <div class="ls-card">
+            <div class="ls-feature-icon">🎯</div>
+            <h3 class="ls-card-title">Misyonumuz</h3>
+            <p class="ls-card-text">
+                Bitki hastalıklarının erken teşhisini herkes için erişilebilir kılmak, 
+                ürün kayıplarını azaltmak ve ilaç kullanımını optimize ederek sürdürülebilir 
+                tarımı desteklemek. Tek bir fotoğrafla, saniyeler içinde profesyonel düzeyde 
+                ön teşhis sunmayı hedefliyoruz.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with h2:
+        st.markdown("""
+        <div class="ls-card">
+            <div class="ls-feature-icon">⚙️</div>
+            <h3 class="ls-card-title">Teknoloji Yığını</h3>
+            <p class="ls-card-text">
+                Sistem; <b>YOLOv8 Medium</b> derin öğrenme modeli üzerine kurulu, 
+                <b>PlantDoc</b> veri seti ile eğitilmiştir. Arayüz <b>Streamlit</b> ile geliştirilmiş, 
+                kullanıcı verileri <b>SQLite</b> ve <b>Firebase Firestore</b> üzerinde hibrit şekilde 
+                yönetilmektedir.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.write("")
+    st.write("")
+    st.write("")
+
+    # ─────────────────────────────────────────────────────
+    #  BÖLÜM 2 — NASIL ÇALIŞIR?
+    # ─────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="text-align:center;margin-bottom:32px;">
+        <span class="ls-section-tag">NASIL ÇALIŞIR?</span>
+        <h2 class="ls-section-title">Üç Adımda Profesyonel Teşhis</h2>
+        <p class="ls-section-lede" style="margin:0 auto;">
+            Tarladaki yaprak fotoğrafından dijital rapora kadar tüm süreç, 
+            kullanıcı deneyimi düşünülerek üç sade adıma indirgendi.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    a1, a2, a3 = st.columns(3, gap="large")
+    with a1:
+        st.markdown("""
+        <div class="ls-card">
+            <div class="ls-step-num">1</div>
+            <h3 class="ls-card-title">📸 Fotoğraf Yükle</h3>
+            <p class="ls-card-text">
+                Şüphelendiğin bitki yaprağının fotoğrafını çek ve sisteme yükle. 
+                JPG, JPEG ve PNG formatları desteklenir. En iyi sonuç için yaprağı 
+                doğal ışık altında, net biçimde fotoğraflaman yeterli.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with a2:
+        st.markdown("""
+        <div class="ls-card">
+            <div class="ls-step-num">2</div>
+            <h3 class="ls-card-title">🤖 Yapay Zekâ Analiz Etsin</h3>
+            <p class="ls-card-text">
+                YOLOv8 modeli görüntüyü saniyeler içinde işler; bitki türünü tanır 
+                ve olası hastalığı yüksek doğrulukla tespit eder. Her tespit, 
+                bounding box ve güven skoru ile görselleştirilir.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with a3:
+        st.markdown("""
+        <div class="ls-card">
+            <div class="ls-step-num">3</div>
+            <h3 class="ls-card-title">📋 Raporu İncele</h3>
+            <p class="ls-card-text">
+                Teşhis sonucu anında ekranına gelir; tüm geçmiş analizlerin 
+                "Geçmiş Analizlerim" panelinde grafik ve tablolarla saklanır. 
+                Kayıtlarını dilediğin zaman gözden geçirip silebilirsin.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.write("")
+    st.write("")
+    st.write("")
+
+    # ─────────────────────────────────────────────────────
+    #  BÖLÜM 3 — SİSTEM ÖZELLİKLERİ
+    # ─────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="text-align:center;margin-bottom:32px;">
+        <span class="ls-section-tag">SİSTEM ÖZELLİKLERİ</span>
+        <h2 class="ls-section-title">Neden Bu Platform?</h2>
+        <p class="ls-section-lede" style="margin:0 auto;">
+            Sadece bir teşhis aracı değil; aynı zamanda kişisel bir tarımsal veri yönetim sistemi.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    f1, f2, f3, f4 = st.columns(4, gap="medium")
+    with f1:
+        st.markdown("""
+        <div class="ls-card">
+            <div class="ls-feature-icon">🌱</div>
+            <h3 class="ls-card-title">Çoklu Bitki Desteği</h3>
+            <p class="ls-card-text">
+                Domates, elma, üzüm, mısır ve daha pek çok ürün için 
+                14 bitki türü, 38 hastalık sınıfı.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with f2:
+        st.markdown("""
+        <div class="ls-card">
+            <div class="ls-feature-icon">⚡</div>
+            <h3 class="ls-card-title">Anlık Sonuç</h3>
+            <p class="ls-card-text">
+                Ortalama 2 saniyenin altında analiz süresi. 
+                Tarladayken bile pratik karar desteği.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with f3:
+        st.markdown("""
+        <div class="ls-card">
+            <div class="ls-feature-icon">📊</div>
+            <h3 class="ls-card-title">Akıllı Dashboard</h3>
+            <p class="ls-card-text">
+                Geçmiş analizlerin KPI metrikleri, dağılım grafikleri 
+                ve detaylı tablolarla görselleştirilir.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with f4:
+        st.markdown("""
+        <div class="ls-card">
+            <div class="ls-feature-icon">🔒</div>
+            <h3 class="ls-card-title">Veri İzolasyonu</h3>
+            <p class="ls-card-text">
+                Her kullanıcı yalnızca kendi kayıtlarına erişebilir. 
+                Verilerin güvenli, gizli ve yönetilebilirdir.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ─────────────────────────────────────────────────────
+    #  COPYRIGHT — Sayfa Sonu
+    # ─────────────────────────────────────────────────────
+    st.write("")
+    st.write("")
+    st.divider()
+    st.markdown("""
+    <div style="text-align:center;padding:20px 0 10px 0;">
+        <p style="color:#94a3b8 !important;font-size:0.78rem;font-weight:500;margin:0;">
+            © 2026 Tarımsal Analiz Sistemi · YBS Bitirme Projesi · Tüm hakları saklıdır
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════
 #  ANA UYGULAMA
 # ══════════════════════════════════════════════════════════
 def main_app():
-    # ── SIDEBAR ──────────────────────────────────────────
+    # ══════════════════════════════════════════════════════
+    #  SIDEBAR — Logo + Dil + Sayfa Navigasyonu + Çıkış
+    # ══════════════════════════════════════════════════════
     st.sidebar.markdown("""
     <div style="padding:14px 0 18px 0;text-align:center;">
         <div style="
@@ -599,6 +879,7 @@ def main_app():
     </div>
     """, unsafe_allow_html=True)
 
+    # ── DİL SEÇİMİ ───────────────────────────────────────
     st.sidebar.markdown("""
     <div style="background:#f9fafb;border:1px solid #e5e7eb;
         border-radius:8px;padding:8px 14px;margin-bottom:8px;text-align:center;">
@@ -612,26 +893,31 @@ def main_app():
 
     st.sidebar.divider()
 
-    st.sidebar.markdown(f"""
-    <div style="margin-bottom:6px;">
+    # ── SAYFA YÖNLENDİRME (NAVİGASYON) ───────────────────
+    st.sidebar.markdown("""
+    <div style="margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:1rem;">⚙️</span>
+            <span style="font-size:1rem;">🧭</span>
             <span style="color:#0f172a;font-size:0.98rem;font-weight:700;letter-spacing:-0.01em;">
-                {T['sidebar_title']}
+                Menü
             </span>
         </div>
         <div style="color:#94a3b8;font-size:0.74rem;margin-top:2px;font-weight:500;">
-            {T['sidebar_info']}
+            Hangi sayfaya gitmek istersin?
         </div>
     </div>
     """, unsafe_allow_html=True)
-    st.sidebar.write("")
 
-    conf = st.sidebar.slider(T["conf_label"], min_value=0.10, max_value=1.00, value=0.25, step=0.05)
-    st.sidebar.write("")
-    uploaded = st.sidebar.file_uploader(T["upload_label"], type=["jpg", "jpeg", "png"], key="img_upload")
+    sayfa = st.sidebar.radio(
+        "Sayfa Seçimi",
+        ("🏠 Ana Sayfa / Analiz", "📊 Geçmiş Analizlerim"),
+        label_visibility="collapsed",
+        key="page_nav",
+    )
+
     st.sidebar.divider()
 
+    # ── ÇIKIŞ ────────────────────────────────────────────
     if st.sidebar.button("Çıkış Yap", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.clear()
@@ -648,6 +934,19 @@ def main_app():
     </div>
     """, unsafe_allow_html=True)
 
+    # ══════════════════════════════════════════════════════
+    #  SAYFA YÖNLENDİRİCİSİ
+    # ══════════════════════════════════════════════════════
+    if sayfa == "🏠 Ana Sayfa / Analiz":
+        ana_analiz_sayfasi(T, lang)
+    else:
+        gecmis_analiz_sayfasi()
+
+
+# ══════════════════════════════════════════════════════════
+#  ANA ANALİZ SAYFASI — Fotoğraf yükleme + YOLOv8 + Rapor
+# ══════════════════════════════════════════════════════════
+def ana_analiz_sayfasi(T, lang):
     # ── ÜST NAVİGASYON BAR ──────────────────────────────
     st.markdown(f"""
     <div style="
@@ -744,6 +1043,35 @@ def main_app():
     with c4: st.metric("Desteklenen Bitki", "14",    "Tarım ürünleri")
 
     st.write("")
+    st.write("")
+
+    # ── KONTROL PANELİ (Görsel Yükleme + Güven Skoru) ────────
+    st.markdown(f"""
+    <div style="
+        background:#ffffff;
+        border:1px solid #e5e7eb;
+        border-radius:14px;
+        padding:18px 22px 6px 22px;
+        margin-bottom:18px;
+    ">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="font-size:1rem;">⚙️</span>
+            <span style="color:#0f172a;font-size:1rem;font-weight:700;letter-spacing:-0.01em;">
+                {T['sidebar_title']}
+            </span>
+        </div>
+        <div style="color:#94a3b8;font-size:0.78rem;margin-bottom:4px;font-weight:500;">
+            {T['sidebar_info']}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    kp1, kp2 = st.columns([1, 1.4], gap="large")
+    with kp1:
+        conf = st.slider(T["conf_label"], min_value=0.10, max_value=1.00, value=0.25, step=0.05)
+    with kp2:
+        uploaded = st.file_uploader(T["upload_label"], type=["jpg", "jpeg", "png"], key="img_upload")
+
     st.write("")
 
     if uploaded is not None:
@@ -1114,6 +1442,307 @@ def main_app():
             </p>
         </div>
         """, unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════
+#  GEÇMİŞ ANALİZLERİM — Dashboard (KPI + Grafikler + Tablo)
+# ══════════════════════════════════════════════════════════
+def gecmis_analiz_sayfasi():
+    # ── BAŞLIK BANNERI ────────────────────────────────────
+    st.markdown("""
+    <div style="
+        background:#ffffff;
+        border:1px solid #e5e7eb;
+        border-radius:16px;
+        padding:28px 32px;
+        margin-bottom:22px;
+    ">
+        <div style="
+            display:inline-flex;align-items:center;gap:8px;
+            background:#ecfdf5;
+            border:1px solid #a7f3d0;
+            border-radius:100px;
+            padding:4px 12px;
+            font-size:0.7rem;
+            color:#065f46 !important;
+            font-weight:600;
+            letter-spacing:0.06em;
+            margin-bottom:12px;
+        ">
+            ANALİZ GEÇMİŞİ
+        </div>
+        <h1 style="
+            margin:0 0 8px 0;
+            font-size:1.7rem;
+            font-weight:800;
+            color:#0f172a !important;
+            letter-spacing:-0.03em;
+            line-height:1.2;
+        ">
+            📊 Geçmiş Analizlerim
+        </h1>
+        <p style="
+            margin:0;
+            font-size:0.94rem;
+            color:#64748b !important;
+            font-weight:400;
+            line-height:1.55;
+            max-width:680px;
+        ">
+            Veritabanına kaydedilen tüm tarımsal analizlerin akademik özeti, dağılımı ve detaylı kayıt tablosu.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── AKTİF KULLANICI KONTROLÜ (Veri İzolasyonu) ────────
+    aktif_kullanici = st.session_state.get("aktif_kullanici")
+    if not aktif_kullanici:
+        st.error("Oturum bilgisi alınamadı. Lütfen tekrar giriş yapın.")
+        return
+
+    # ── VERİ ÇEKME (Sadece Aktif Kullanıcının Kayıtları) ──
+    try:
+        conn_dash = sqlite3.connect("tarimsal_analiz.db", check_same_thread=False)
+        df = pd.read_sql_query(
+            "SELECT * FROM analiz_gecmisi WHERE kullanici_adi = ?",
+            conn_dash,
+            params=(aktif_kullanici,),
+        )
+        conn_dash.close()
+    except Exception as e:
+        st.error(f"Veritabanı okuma hatası: {e}")
+        return
+
+    if df.empty:
+        st.info("Henüz kayıtlı bir analizin bulunmuyor. Ana sayfadan ilk analizini gerçekleştir, sonuçlar burada görüntülenecek.")
+        return
+
+    # Tarih kolonunu sıralamak için datetime'a çevir
+    df["tarih"] = pd.to_datetime(df["tarih"], errors="coerce")
+
+    # ══════════════════════════════════════════════════════
+    #  ÜST KATMAN — KPI METRİKLERİ
+    # ══════════════════════════════════════════════════════
+    toplam_analiz = len(df)
+
+    # En sık tespit edilen hastalık ("Sağlıklı" ve "Tespit Edilemedi" hariç)
+    hastalik_serisi = df["hastalik_durumu"].dropna()
+    hastalik_serisi = hastalik_serisi[
+        ~hastalik_serisi.str.lower().str.contains("sağlıklı", na=False)
+        & ~hastalik_serisi.str.lower().str.contains("tespit edilemedi", na=False)
+    ]
+    if not hastalik_serisi.empty:
+        en_sik_hastalik = hastalik_serisi.value_counts().idxmax()
+    else:
+        en_sik_hastalik = "—"
+
+    k1, k2 = st.columns(2)
+    with k1:
+        st.metric(label="Toplam Analiz Sayısı", value=f"{toplam_analiz}")
+    with k2:
+        st.metric(label="En Sık Tespit Edilen Hastalık", value=en_sik_hastalik)
+
+    st.write("")
+    st.write("")
+
+    # ══════════════════════════════════════════════════════
+    #  ORTA KATMAN — GRAFİKLER (Bar + Donut)
+    # ══════════════════════════════════════════════════════
+    g1, g2 = st.columns(2, gap="large")
+
+    # ── SOL: Bitki Dağılımı (Bar Chart) ──────────────────
+    with g1:
+        st.markdown("""
+        <div style="margin-bottom:8px;">
+            <div style="font-size:0.95rem;font-weight:700;color:#0f172a;letter-spacing:-0.01em;">
+                🌱 Bitki Türü Dağılımı
+            </div>
+            <div style="font-size:0.78rem;color:#94a3b8;font-weight:500;margin-top:2px;">
+                Analiz edilen tarım ürünlerinin frekans dağılımı
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        bitki_sayim = (
+            df["bitki_turu"]
+            .fillna("Bilinmiyor")
+            .value_counts()
+            .reset_index()
+        )
+        bitki_sayim.columns = ["Bitki Türü", "Analiz Sayısı"]
+
+        fig_bar = px.bar(
+            bitki_sayim,
+            x="Bitki Türü",
+            y="Analiz Sayısı",
+            color_discrete_sequence=["#7DA78C"],
+        )
+        fig_bar.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font_color="#334155",
+            font_family="Inter, sans-serif",
+            margin=dict(l=10, r=10, t=10, b=10),
+            height=360,
+            xaxis=dict(showgrid=False, title=None),
+            yaxis=dict(gridcolor="#f3f4f6", title=None),
+        )
+        fig_bar.update_traces(marker_line_width=0, hovertemplate="<b>%{x}</b><br>Analiz: %{y}<extra></extra>")
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    # ── SAĞ: Sağlıklı vs Enfekte (Donut Chart) ──────────
+    with g2:
+        st.markdown("""
+        <div style="margin-bottom:8px;">
+            <div style="font-size:0.95rem;font-weight:700;color:#0f172a;letter-spacing:-0.01em;">
+                🩺 Sağlık Durumu Oranı
+            </div>
+            <div style="font-size:0.78rem;color:#94a3b8;font-weight:500;margin-top:2px;">
+                Sağlıklı ve enfekte örneklerin genel dağılımı
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # "Sağlıklı" kelimesi geçenler → Sağlıklı; geri kalanlar → Enfekte
+        saglikli_mask = df["hastalik_durumu"].fillna("").str.lower().str.contains("sağlıklı")
+        saglikli_n = int(saglikli_mask.sum())
+        enfekte_n = int((~saglikli_mask).sum())
+
+        donut_df = pd.DataFrame({
+            "Durum": ["Sağlıklı", "Enfekte"],
+            "Sayı": [saglikli_n, enfekte_n],
+        })
+
+        fig_donut = px.pie(
+            donut_df,
+            names="Durum",
+            values="Sayı",
+            hole=0.55,
+            color="Durum",
+            color_discrete_map={"Sağlıklı": "#7DA78C", "Enfekte": "#dc2626"},
+        )
+        fig_donut.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font_color="#334155",
+            font_family="Inter, sans-serif",
+            margin=dict(l=10, r=10, t=10, b=10),
+            height=360,
+            legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5),
+        )
+        fig_donut.update_traces(
+            textinfo="percent",
+            textfont_size=14,
+            marker=dict(line=dict(color="#ffffff", width=2)),
+            hovertemplate="<b>%{label}</b><br>Adet: %{value}<br>Oran: %{percent}<extra></extra>",
+        )
+        st.plotly_chart(fig_donut, use_container_width=True)
+
+    st.write("")
+
+    # ══════════════════════════════════════════════════════
+    #  ALT KATMAN — DETAYLI VERİ TABLOSU
+    # ══════════════════════════════════════════════════════
+    st.markdown("""
+    <div style="margin-bottom:10px;">
+        <div style="font-size:0.95rem;font-weight:700;color:#0f172a;letter-spacing:-0.01em;">
+            📋 Detaylı Analiz Kayıtları
+        </div>
+        <div style="font-size:0.78rem;color:#94a3b8;font-weight:500;margin-top:2px;">
+            Tüm kayıtlar yeniden eskiye doğru sıralanmıştır
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    df_tablo = df.sort_values(by="tarih", ascending=False).reset_index(drop=True)
+
+    st.dataframe(
+        df_tablo,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "islem_id": None,  # Gizli
+            "kullanici_adi": st.column_config.TextColumn("Kullanıcı"),
+            "bitki_turu": st.column_config.TextColumn("Bitki Türü"),
+            "hastalik_durumu": st.column_config.TextColumn("Hastalık Durumu"),
+            "guven_skoru": st.column_config.ProgressColumn(
+                "Güven Skoru",
+                help="Modelin tahmin güven skoru (0-1 arası)",
+                format="%.2f",
+                min_value=0.0,
+                max_value=1.0,
+            ),
+            "tarih": st.column_config.DatetimeColumn(
+                "Analiz Tarihi",
+                format="DD.MM.YYYY HH:mm",
+            ),
+        },
+    )
+
+    st.write("")
+
+    # ══════════════════════════════════════════════════════
+    #  KAYIT YÖNETİMİ — Hatalı / Eski Analizleri Silme
+    # ══════════════════════════════════════════════════════
+    with st.expander("🗑️ Hatalı veya Eski Analizleri Sil", expanded=False):
+        st.markdown(
+            "<div style='font-size:0.85rem;color:#64748b;margin-bottom:10px;'>"
+            "Aşağıdaki listeden silmek istediğin kaydı seç. <b>Bu işlem geri alınamaz</b> ve "
+            "kayıt veritabanından kalıcı olarak silinir."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        # ── Selectbox için seçenek listesi (en yeni → en eski) ──
+        secenek_df = df_tablo[["islem_id", "tarih", "bitki_turu", "hastalik_durumu"]].copy()
+        secenek_df["tarih_str"] = secenek_df["tarih"].dt.strftime("%d.%m.%Y %H:%M")
+
+        # islem_id → etiket eşlemesi
+        etiket_haritasi = {
+            int(row["islem_id"]):
+                f"{row['tarih_str']}  |  {row['bitki_turu']}  →  {row['hastalik_durumu']}"
+            for _, row in secenek_df.iterrows()
+        }
+
+        secilen_id = st.selectbox(
+            "Silinecek Kayıt",
+            options=list(etiket_haritasi.keys()),
+            format_func=lambda x: etiket_haritasi[x],
+            key="silinecek_kayit_secimi",
+        )
+
+        # Seçilen kayda dair bilgilendirme
+        if secilen_id is not None:
+            st.info(f"**Seçili kayıt:** {etiket_haritasi[secilen_id]}")
+
+        sil_btn = st.button(
+            "Seçili Kaydı Kalıcı Olarak Sil",
+            key="kayit_sil_btn",
+            use_container_width=True,
+        )
+
+        if sil_btn and secilen_id is not None:
+            try:
+                conn_sil = sqlite3.connect("tarimsal_analiz.db", check_same_thread=False)
+                c_sil = conn_sil.cursor()
+                # Çift doğrulama: hem islem_id hem kullanici_adi eşleşmeli
+                c_sil.execute(
+                    "DELETE FROM analiz_gecmisi WHERE islem_id = ? AND kullanici_adi = ?",
+                    (int(secilen_id), aktif_kullanici),
+                )
+                etkilenen = c_sil.rowcount
+                conn_sil.commit()
+                conn_sil.close()
+
+                if etkilenen > 0:
+                    st.toast("✅ Kayıt başarıyla silindi.", icon="🗑️")
+                    st.rerun()
+                else:
+                    st.warning(
+                        "Kayıt silinemedi. Kayıt mevcut değil ya da bu kullanıcıya ait değil."
+                    )
+            except Exception as e:
+                st.error(f"Silme işlemi sırasında bir hata oluştu: {e}")
 
 
 # ══════════════════════════════════════════════════════════

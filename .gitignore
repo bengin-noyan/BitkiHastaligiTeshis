@@ -1,42 +1,27 @@
+# 🐍 Python ve Sanal Ortamlar
 .venv/
 .venv1/
-data/
-.idea/
-__pycache__/
-*.h5
-
-# Sanal Ortamlar
-.venv/
-.venv1/
-
-# Veri Setleri ve Analiz Sonuçları
-Plant-Disease-1/
-runs/
-data/
-
-# Çok Büyük Model Dosyaları (100MB Üstü)
-*.h5
-
-# PyCharm ve Python Çöp Dosyaları
-.idea/
-__pycache__/
-
-# YOLOv8 Model Dosyaları (100MB Üstü)
-*.pt
-
-.venv1/
-__pycache__/
-runs/
-
-datasets/
-.vs/
-*.jpg
-
-# Firebase Secret Key
-firebase_key.json
-
 venv1/
 __pycache__/
-*.pt
+*.pyc
 
+# 🧠 Yapay Zeka Modelleri ve Eğitim Çıktıları
+*.pt
+*.onnx
+*.h5
+runs/
+
+# 🗂️ Veri Setleri ve Test Görselleri
+data/
+datasets/
+Plant-Disease-1/
+*.jpg
+
+# 💻 IDE ve Sistem Dosyaları (VS Code / PyCharm)
+.idea/
+.vs/
+.DS_Store
+
+# 🔒 Güvenlik ve Yerel Veritabanı (ÇOK KRİTİK)
+firebase_key.json
 *.db
