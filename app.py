@@ -791,11 +791,11 @@ LANGS = {
 
 CLASS_TR = {
     "apple":"Elma","tomato":"Domates","grape":"Üzüm","corn":"Mısır","potato":"Patates",
-    "cherry":"Kiraz","strawberry":"Çilek","bell_pepper":"Dolmalık Biber","pepper":"Biber",
+    "cherry":"Kiraz","strawberry":"Çilek","bell_pepper":"Biber","pepper":"Biber",
     "peach":"Şeftali","squash":"Kabak","soybean":"Soya Fasulyesi","raspberry":"Ahududu",
     "healthy":"Sağlıklı","leaf":"Yaprağı","leaves":"Yaprakları",
     "scab":"Karaleke","rust":"Pas","virus":"Virüs","blight":"Yanıklık",
-    "spot":"Leke","spots":"Lekeleri","mold":"Küf","mildew":"Külleme",
+    "spot":"Lekesi","spots":"Lekeleri","mold":"Küf","mildew":"Külleme",
     "rot":"Çürüklük","early":"Erken","late":"Geç","black":"Siyah",
     "bacterial":"Bakteriyel","mosaic":"Mozaik"
 }
