@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Bitki Hastalığı Teşhis",
+    "slug": "bitki-hastaligi-teshis",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "bitki-teshis",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#f0f5f2",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pau.bitkihastaligi"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#f0f5f2"
+      },
+      "package": "com.pau.bitkihastaligi",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Uygulama, bitki yapraklarını analiz edebilmek için fotoğraflarınıza erişim izni istemektedir.",
+          "cameraPermission": "Uygulama, bitki yapraklarını fotoğraflamak için kamera izni istemektedir."
+        }
+      ],
+      "expo-asset"
+    ]
+  }
+}
