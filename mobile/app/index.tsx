@@ -88,7 +88,6 @@ export default function LoginScreen() {
             {/* Error Message */}
             {error !== '' && (
               <View style={styles.errorContainer}>
-                <Text style={styles.errorIcon}>⚠️</Text>
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             )}
@@ -97,7 +96,6 @@ export default function LoginScreen() {
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Kullanıcı Adı</Text>
               <View style={styles.inputContainer}>
-                <Text style={styles.inputIcon}>👤</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Kullanıcı adınızı girin"
@@ -118,7 +116,6 @@ export default function LoginScreen() {
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Şifre</Text>
               <View style={styles.inputContainer}>
-                <Text style={styles.inputIcon}>🔒</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Şifrenizi girin"
@@ -274,10 +271,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.redBorder,
   },
-  errorIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
   errorText: {
     flex: 1,
     fontFamily: FONTS.medium,
@@ -304,10 +297,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     paddingHorizontal: 14,
     height: 52,
-  },
-  inputIcon: {
-    fontSize: 18,
-    marginRight: 10,
   },
   input: {
     flex: 1,

@@ -172,7 +172,7 @@ export default function HomeScreen() {
             onPress={handleLogout}
             activeOpacity={0.7}
           >
-            <Text style={styles.logoutIcon}>🚪</Text>
+            <Text style={styles.logoutText}>Çıkış</Text>
           </TouchableOpacity>
         </View>
         {/* User greeting */}
@@ -191,7 +191,7 @@ export default function HomeScreen() {
       >
         {/* ── Photo Section ─────────────────────────────────────── */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>📋 Fotoğraf</Text>
+          <Text style={styles.sectionTitle}>Fotoğraf</Text>
           <View style={styles.photoArea}>
             {resultImageBase64 ? (
               // Analiz sonrası: API'den dönen kutucuklu (bounding box) görsel.
@@ -210,7 +210,6 @@ export default function HomeScreen() {
               />
             ) : (
               <View style={styles.photoPlaceholder}>
-                <Text style={styles.placeholderIcon}>📸</Text>
                 <Text style={styles.placeholderText}>
                   Yaprak fotoğrafı çekin veya seçin
                 </Text>
@@ -230,7 +229,6 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             disabled={loading}
           >
-            <Text style={styles.actionButtonIcon}>📷</Text>
             <Text style={styles.actionButtonText}>Kamera</Text>
           </TouchableOpacity>
 
@@ -240,7 +238,6 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             disabled={loading}
           >
-            <Text style={styles.actionButtonIcon}>🖼️</Text>
             <Text style={styles.actionButtonText}>Galeri</Text>
           </TouchableOpacity>
         </View>
@@ -263,14 +260,13 @@ export default function HomeScreen() {
               </Text>
             </View>
           ) : (
-            <Text style={styles.analyzeButtonText}>⚡ Analiz Et</Text>
+            <Text style={styles.analyzeButtonText}>Analiz Et</Text>
           )}
         </TouchableOpacity>
 
         {/* ── Error Message ─────────────────────────────────────── */}
         {error !== '' && (
           <View style={styles.errorCard}>
-            <Text style={styles.errorIcon}>⚠️</Text>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
@@ -280,14 +276,13 @@ export default function HomeScreen() {
           <View style={styles.resultsContainer}>
             <View style={styles.resultsDivider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>📊 Analiz Sonuçları</Text>
+              <Text style={styles.dividerText}>Analiz Sonuçları</Text>
               <View style={styles.dividerLine} />
             </View>
 
             {/* Plant Type Card */}
             <View style={styles.resultCard}>
               <View style={styles.resultCardHeader}>
-                <Text style={styles.resultCardIcon}>🌱</Text>
                 <Text style={styles.resultCardTitle}>Tespit Edilen Bitki</Text>
               </View>
               <View style={styles.plantChipsRow}>
@@ -306,9 +301,6 @@ export default function HomeScreen() {
             {/* Health Status */}
             <View style={styles.resultCard}>
               <View style={styles.resultCardHeader}>
-                <Text style={styles.resultCardIcon}>
-                  {summary.is_healthy ? '✅' : '🔴'}
-                </Text>
                 <Text style={styles.resultCardTitle}>Sağlık Durumu</Text>
               </View>
               <View
@@ -333,8 +325,8 @@ export default function HomeScreen() {
                   ]}
                 >
                   {summary.is_healthy
-                    ? '🌿 Sağlıklı'
-                    : `⚠️ ${summary.disease_count} Hastalık Tespit Edildi`}
+                    ? 'Sağlıklı'
+                    : `${summary.disease_count} Hastalık Tespit Edildi`}
                 </Text>
               </View>
             </View>
@@ -342,7 +334,6 @@ export default function HomeScreen() {
             {/* Risk Score */}
             <View style={styles.resultCard}>
               <View style={styles.resultCardHeader}>
-                <Text style={styles.resultCardIcon}>📉</Text>
                 <Text style={styles.resultCardTitle}>Tahmini Verim Kaybı</Text>
               </View>
               <View style={styles.riskScoreContainer}>
@@ -391,7 +382,6 @@ export default function HomeScreen() {
             {analysisResult.detections.length > 0 && (
               <View style={styles.resultCard}>
                 <View style={styles.resultCardHeader}>
-                  <Text style={styles.resultCardIcon}>🔍</Text>
                   <Text style={styles.resultCardTitle}>Tespit Detayları</Text>
                 </View>
                 {analysisResult.detections.map((det, idx) => (
@@ -417,7 +407,7 @@ export default function HomeScreen() {
               <>
                 <View style={styles.diseaseSectionHeader}>
                   <Text style={styles.diseaseSectionTitle}>
-                    🦠 Hastalık Bilgileri ve Tedavi Önerileri
+                    Hastalık Bilgileri ve Tedavi Önerileri
                   </Text>
                 </View>
 
@@ -440,57 +430,42 @@ export default function HomeScreen() {
                     </View>
 
                     {/* Treatment: Medicine */}
-                    <View style={styles.treatmentItem}>
-                      <View style={styles.treatmentIconBox}>
-                        <Text style={styles.treatmentIcon}>💊</Text>
-                      </View>
-                      <View style={styles.treatmentContent}>
-                        <Text style={styles.treatmentLabel}>Önerilen İlaç</Text>
-                        <Text style={styles.treatmentText}>
-                          {disease.treatment_tr?.ilac || 'Bilgi mevcut değil'}
-                        </Text>
-                      </View>
+                    <View
+                      style={[
+                        styles.treatmentItem,
+                        { borderLeftColor: COLORS.success },
+                      ]}
+                    >
+                      <Text style={styles.treatmentLabel}>Önerilen İlaç</Text>
+                      <Text style={styles.treatmentText}>
+                        {disease.treatment_tr?.ilac || 'Bilgi mevcut değil'}
+                      </Text>
                     </View>
 
                     {/* Treatment: Agronomic */}
-                    <View style={styles.treatmentItem}>
-                      <View
-                        style={[
-                          styles.treatmentIconBox,
-                          { backgroundColor: COLORS.amberSoft },
-                        ]}
-                      >
-                        <Text style={styles.treatmentIcon}>🌾</Text>
-                      </View>
-                      <View style={styles.treatmentContent}>
-                        <Text style={styles.treatmentLabel}>
-                          Zirai Beklenti
-                        </Text>
-                        <Text style={styles.treatmentText}>
-                          {disease.treatment_tr?.sonuc || 'Bilgi mevcut değil'}
-                        </Text>
-                      </View>
+                    <View
+                      style={[
+                        styles.treatmentItem,
+                        { borderLeftColor: COLORS.amber },
+                      ]}
+                    >
+                      <Text style={styles.treatmentLabel}>Zirai Beklenti</Text>
+                      <Text style={styles.treatmentText}>
+                        {disease.treatment_tr?.sonuc || 'Bilgi mevcut değil'}
+                      </Text>
                     </View>
 
                     {/* Treatment: Financial */}
-                    <View style={styles.treatmentItem}>
-                      <View
-                        style={[
-                          styles.treatmentIconBox,
-                          { backgroundColor: '#eff6ff' },
-                        ]}
-                      >
-                        <Text style={styles.treatmentIcon}>💰</Text>
-                      </View>
-                      <View style={styles.treatmentContent}>
-                        <Text style={styles.treatmentLabel}>
-                          Finansal Etki
-                        </Text>
-                        <Text style={styles.treatmentText}>
-                          {disease.treatment_tr?.ekonomi ||
-                            'Bilgi mevcut değil'}
-                        </Text>
-                      </View>
+                    <View
+                      style={[
+                        styles.treatmentItem,
+                        { borderLeftColor: COLORS.info },
+                      ]}
+                    >
+                      <Text style={styles.treatmentLabel}>Finansal Etki</Text>
+                      <Text style={styles.treatmentText}>
+                        {disease.treatment_tr?.ekonomi || 'Bilgi mevcut değil'}
+                      </Text>
                     </View>
                   </View>
                 ))}
@@ -503,7 +478,7 @@ export default function HomeScreen() {
               onPress={handleReset}
               activeOpacity={0.8}
             >
-              <Text style={styles.resetButtonText}>🔄 Yeni Analiz</Text>
+              <Text style={styles.resetButtonText}>Yeni Analiz</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -562,17 +537,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   logoutButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    height: 34,
+    paddingHorizontal: 14,
+    borderRadius: 100,
     backgroundColor: COLORS.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.primaryBorder,
   },
-  logoutIcon: {
-    fontSize: 18,
+  logoutText: {
+    fontFamily: FONTS.semibold,
+    fontSize: 13,
+    color: COLORS.primaryText,
   },
   greetingRow: {
     flexDirection: 'row',
@@ -647,10 +624,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 14,
   },
-  placeholderIcon: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
   placeholderText: {
     fontFamily: FONTS.semibold,
     fontSize: 15,
@@ -692,9 +665,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgCard,
     borderWidth: 1.5,
     borderColor: COLORS.primary,
-  },
-  actionButtonIcon: {
-    fontSize: 20,
   },
   actionButtonText: {
     fontFamily: FONTS.bold,
@@ -742,10 +712,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: COLORS.redBorder,
-  },
-  errorIcon: {
-    fontSize: 18,
-    marginRight: 10,
   },
   errorText: {
     flex: 1,
@@ -795,9 +761,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
     gap: 8,
-  },
-  resultCardIcon: {
-    fontSize: 20,
   },
   resultCardTitle: {
     fontFamily: FONTS.bold,
@@ -980,26 +943,12 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Treatment Items
+  // Treatment Items — renkli ince sol kenarlı, emojisiz blok
   treatmentItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     marginBottom: 14,
-    gap: 12,
-  },
-  treatmentIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: COLORS.successSoft,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  treatmentIcon: {
-    fontSize: 18,
-  },
-  treatmentContent: {
-    flex: 1,
+    paddingLeft: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.border,
   },
   treatmentLabel: {
     fontFamily: FONTS.bold,

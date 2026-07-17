@@ -97,6 +97,17 @@ def startup_event():
         model = YOLO(MODEL_PATH)
         print(f"[BİLGİ] YOLOv8 modeli yüklendi: {MODEL_PATH}")
 
+        # --- Model Isıtma (warm-up) ---
+        # İlk gerçek isteğin yavaş olmaması için, gerçek analizle aynı çözünürlükte
+        # (imgsz=800) sahte bir tahmin çalıştırıp modeli hazır hale getir.
+        # Doğruluk üzerinde etkisi yoktur; yalnızca ilk çıkarım gecikmesini önler.
+        try:
+            warmup_image = Image.new("RGB", (800, 800), (0, 0, 0))
+            model.predict(source=warmup_image, imgsz=800, verbose=False)
+            print("[BİLGİ] Model ısıtıldı (warm-up tamamlandı).")
+        except Exception as e:
+            print(f"[UYARI] Model ısıtma başarısız (kritik değil): {e}")
+
     # --- Firebase Admin SDK Başlat ---
     if not os.path.exists(FIREBASE_KEY_PATH):
         print(f"[UYARI] Firebase anahtar dosyası bulunamadı: {FIREBASE_KEY_PATH}")

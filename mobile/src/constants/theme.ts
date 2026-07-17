@@ -28,6 +28,9 @@ export const COLORS = {
   redSoft: '#fef2f2',
   redBorder: '#fecaca',
 
+  // Bilgi (mavi) — tedavi kalemlerini ayırt etmek için ölçülü aksan
+  info: '#2563eb',
+
   // Metin tonları
   textDark: '#0f172a',
   textMid: '#334155',
