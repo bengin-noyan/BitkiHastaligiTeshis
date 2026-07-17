@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { login } from '../src/services/api';
+import { COLORS, FONTS, SHADOW_TINT } from '../src/constants/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -63,14 +64,13 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Top Decorative Dots */}
-          <View style={styles.dotsRow}>
-            <View style={[styles.dot, { backgroundColor: '#7DA78C' }]} />
-            <View style={[styles.dot, { backgroundColor: '#A3C4AF' }]} />
-            <View style={[styles.dot, { backgroundColor: '#D4E6DA' }]} />
+          {/* Top badge pill (app.py .lp-badge) */}
+          <View style={styles.badgePill}>
+            <View style={styles.badgeDot} />
+            <Text style={styles.badgePillText}>Yapay Zekâ Destekli Teşhis</Text>
           </View>
 
-          {/* App Icon */}
+          {/* App Icon (app.py .lp-icon — zümrüt yumuşak kutu) */}
           <View style={styles.iconContainer}>
             <View style={styles.iconBox}>
               <Text style={styles.iconEmoji}>🌿</Text>
@@ -101,7 +101,7 @@ export default function LoginScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Kullanıcı adınızı girin"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={COLORS.textMuted}
                   value={username}
                   onChangeText={(text) => {
                     setUsername(text);
@@ -122,7 +122,7 @@ export default function LoginScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Şifrenizi girin"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={COLORS.textMuted}
                   value={password}
                   onChangeText={(text) => {
                     setPassword(text);
@@ -148,7 +148,7 @@ export default function LoginScreen() {
             >
               {loading ? (
                 <View style={styles.loadingRow}>
-                  <ActivityIndicator size="small" color="#ffffff" />
+                  <ActivityIndicator size="small" color={COLORS.white} />
                   <Text style={styles.loginButtonText}>
                     {'  '}Giriş yapılıyor...
                   </Text>
@@ -177,7 +177,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f5f2',
+    backgroundColor: COLORS.primarySoft,
   },
   keyboardView: {
     flex: 1,
@@ -188,74 +188,92 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 40,
   },
-  dotsRow: {
+  // Badge pill (app.py .lp-badge)
+  badgePill: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 28,
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 7,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 100,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    marginBottom: 24,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  badgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.primary,
+  },
+  badgePillText: {
+    fontFamily: FONTS.semibold,
+    fontSize: 12,
+    color: COLORS.textSoft,
+    letterSpacing: 0.2,
   },
   iconContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 22,
   },
   iconBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: '#7DA78C',
+    width: 76,
+    height: 76,
+    borderRadius: 20,
+    backgroundColor: COLORS.successSoft,
+    borderWidth: 1,
+    borderColor: COLORS.successBorder,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#7DA78C',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
+    shadowColor: SHADOW_TINT,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
     shadowRadius: 16,
-    elevation: 8,
+    elevation: 6,
   },
   iconEmoji: {
-    fontSize: 36,
+    fontSize: 34,
   },
   title: {
+    fontFamily: FONTS.extrabold,
     fontSize: 30,
-    fontWeight: '800',
-    color: '#0f172a',
+    color: COLORS.textDark,
     textAlign: 'center',
     lineHeight: 38,
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
     marginBottom: 10,
   },
   subtitle: {
+    fontFamily: FONTS.regular,
     fontSize: 15,
-    color: '#64748b',
+    color: COLORS.textSoft,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 36,
+    marginBottom: 34,
   },
   card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: 16,
     padding: 24,
-    shadowColor: '#0f172a',
+    shadowColor: SHADOW_TINT,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#e8ede9',
+    borderColor: COLORS.border,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fef2f2',
+    backgroundColor: COLORS.redSoft,
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: COLORS.redBorder,
   },
   errorIcon: {
     fontSize: 16,
@@ -263,27 +281,28 @@ const styles = StyleSheet.create({
   },
   errorText: {
     flex: 1,
+    fontFamily: FONTS.medium,
     fontSize: 13,
-    color: '#dc2626',
+    color: COLORS.red,
     lineHeight: 18,
   },
   inputWrapper: {
     marginBottom: 18,
   },
   inputLabel: {
+    fontFamily: FONTS.semibold,
     fontSize: 13,
-    fontWeight: '600',
-    color: '#334155',
+    color: COLORS.textMid,
     marginBottom: 8,
     marginLeft: 4,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8faf8',
-    borderRadius: 14,
+    backgroundColor: COLORS.inputBg,
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderColor: COLORS.border,
     paddingHorizontal: 14,
     height: 52,
   },
@@ -293,21 +312,22 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    fontFamily: FONTS.medium,
     fontSize: 15,
-    color: '#0f172a',
+    color: COLORS.textDark,
     paddingVertical: 0,
   },
   loginButton: {
-    backgroundColor: '#7DA78C',
-    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#7DA78C',
+    shadowColor: SHADOW_TINT,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
     elevation: 4,
   },
   loginButtonDisabled: {
@@ -318,14 +338,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loginButtonText: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
-    letterSpacing: 0.3,
+    color: COLORS.white,
+    letterSpacing: 0.2,
   },
   bottomBadge: {
     alignItems: 'center',
-    marginTop: 36,
+    marginTop: 34,
     paddingVertical: 12,
   },
   badgeLine: {
@@ -333,8 +353,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   badgeText: {
+    fontFamily: FONTS.medium,
     fontSize: 12,
-    color: '#94a3b8',
+    color: COLORS.textMuted,
     textAlign: 'center',
     letterSpacing: 0.2,
   },

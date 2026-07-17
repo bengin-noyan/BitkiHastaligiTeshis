@@ -35,7 +35,8 @@
           "cameraPermission": "Uygulama, bitki yapraklarını fotoğraflamak için kamera izni istemektedir."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-font"
     ]
   }
 }

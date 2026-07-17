@@ -8,7 +8,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -17,8 +16,7 @@ import {
   analyzeImage,
   type AnalysisResult,
 } from '../src/services/api';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { COLORS, FONTS, SHADOW_TINT, riskColor } from '../src/constants/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -145,16 +143,12 @@ export default function HomeScreen() {
 
   // ─── Helpers ─────────────────────────────────────────────────────
 
-  const getRiskColor = (score: number): string => {
-    if (score < 30) return '#22c55e';
-    if (score < 60) return '#f59e0b';
-    return '#ef4444';
-  };
+  const getRiskColor = riskColor;
 
   const getRiskLabel = (score: number): string => {
-    if (score < 30) return 'Düşük Risk';
-    if (score < 60) return 'Orta Risk';
-    return 'Yüksek Risk';
+    if (score < 30) return 'Düşük Kayıp';
+    if (score < 60) return 'Orta Kayıp';
+    return 'Yüksek Kayıp';
   };
 
   const summary = analysisResult?.summary;
@@ -263,7 +257,7 @@ export default function HomeScreen() {
         >
           {loading ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={COLORS.white} />
               <Text style={styles.analyzeButtonText}>
                 {'  '}Analiz ediliyor...
               </Text>
@@ -322,9 +316,11 @@ export default function HomeScreen() {
                   styles.healthBadge,
                   {
                     backgroundColor: summary.is_healthy
-                      ? '#f0fdf4'
-                      : '#fef2f2',
-                    borderColor: summary.is_healthy ? '#bbf7d0' : '#fecaca',
+                      ? COLORS.successSoft
+                      : COLORS.redSoft,
+                    borderColor: summary.is_healthy
+                      ? COLORS.successBorder
+                      : COLORS.redBorder,
                   },
                 ]}
               >
@@ -332,7 +328,7 @@ export default function HomeScreen() {
                   style={[
                     styles.healthBadgeText,
                     {
-                      color: summary.is_healthy ? '#16a34a' : '#dc2626',
+                      color: summary.is_healthy ? COLORS.success : COLORS.red,
                     },
                   ]}
                 >
@@ -346,8 +342,8 @@ export default function HomeScreen() {
             {/* Risk Score */}
             <View style={styles.resultCard}>
               <View style={styles.resultCardHeader}>
-                <Text style={styles.resultCardIcon}>📈</Text>
-                <Text style={styles.resultCardTitle}>Risk Skoru</Text>
+                <Text style={styles.resultCardIcon}>📉</Text>
+                <Text style={styles.resultCardTitle}>Tahmini Verim Kaybı</Text>
               </View>
               <View style={styles.riskScoreContainer}>
                 <Text
@@ -461,7 +457,7 @@ export default function HomeScreen() {
                       <View
                         style={[
                           styles.treatmentIconBox,
-                          { backgroundColor: '#fef3c7' },
+                          { backgroundColor: COLORS.amberSoft },
                         ]}
                       >
                         <Text style={styles.treatmentIcon}>🌾</Text>
@@ -481,7 +477,7 @@ export default function HomeScreen() {
                       <View
                         style={[
                           styles.treatmentIconBox,
-                          { backgroundColor: '#e0f2fe' },
+                          { backgroundColor: '#eff6ff' },
                         ]}
                       >
                         <Text style={styles.treatmentIcon}>💰</Text>
@@ -524,23 +520,23 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafa',
+    backgroundColor: COLORS.bgPage,
   },
 
   // Header
   header: {
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.bgCard,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    shadowColor: '#0f172a',
+    borderBottomColor: COLORS.border,
+    shadowColor: SHADOW_TINT,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   },
   headerAccent: {
     height: 4,
-    backgroundColor: '#7DA78C',
+    backgroundColor: COLORS.primary,
   },
   headerContent: {
     flexDirection: 'row',
@@ -554,25 +550,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
+    fontFamily: FONTS.extrabold,
     fontSize: 22,
-    fontWeight: '800',
-    color: '#0f172a',
+    color: COLORS.textDark,
     letterSpacing: -0.3,
   },
   headerSubtitle: {
+    fontFamily: FONTS.regular,
     fontSize: 13,
-    color: '#64748b',
+    color: COLORS.textSoft,
     marginTop: 2,
   },
   logoutButton: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: COLORS.primaryBorder,
   },
   logoutIcon: {
     fontSize: 18,
@@ -588,16 +585,17 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#22c55e',
+    backgroundColor: COLORS.primary,
     marginRight: 8,
   },
   greetingText: {
+    fontFamily: FONTS.regular,
     fontSize: 13,
-    color: '#64748b',
+    color: COLORS.textSoft,
   },
   greetingName: {
-    fontWeight: '700',
-    color: '#334155',
+    fontFamily: FONTS.bold,
+    color: COLORS.textMid,
   },
 
   // Scroll
@@ -610,22 +608,22 @@ const styles = StyleSheet.create({
 
   // Section Card
   sectionCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.bgCard,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#0f172a',
+    borderColor: COLORS.border,
+    shadowColor: SHADOW_TINT,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
     elevation: 2,
   },
   sectionTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: '700',
-    color: '#334155',
+    color: COLORS.textMid,
     marginBottom: 12,
   },
 
@@ -634,7 +632,7 @@ const styles = StyleSheet.create({
     height: 300,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#f8faf8',
+    backgroundColor: COLORS.inputBg,
   },
   photoImage: {
     width: '100%',
@@ -645,7 +643,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#d4e6da',
+    borderColor: COLORS.primaryBorder,
     borderStyle: 'dashed',
     borderRadius: 14,
   },
@@ -654,14 +652,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   placeholderText: {
+    fontFamily: FONTS.semibold,
     fontSize: 15,
-    fontWeight: '600',
-    color: '#64748b',
+    color: COLORS.textSoft,
     marginBottom: 4,
   },
   placeholderHint: {
+    fontFamily: FONTS.regular,
     fontSize: 12,
-    color: '#94a3b8',
+    color: COLORS.textMuted,
   },
 
   // Action Buttons
@@ -676,45 +675,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     height: 52,
-    borderRadius: 14,
+    borderRadius: 12,
     gap: 8,
-    shadowColor: '#0f172a',
+    shadowColor: SHADOW_TINT,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 2,
   },
   cameraButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.bgCard,
     borderWidth: 1.5,
-    borderColor: '#7DA78C',
+    borderColor: COLORS.primary,
   },
   galleryButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.bgCard,
     borderWidth: 1.5,
-    borderColor: '#7DA78C',
+    borderColor: COLORS.primary,
   },
   actionButtonIcon: {
     fontSize: 20,
   },
   actionButtonText: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: '700',
-    color: '#7DA78C',
+    color: COLORS.primaryText,
   },
 
   // Analyze Button
   analyzeButton: {
-    backgroundColor: '#7DA78C',
+    backgroundColor: COLORS.primary,
     height: 54,
-    borderRadius: 14,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
-    shadowColor: '#7DA78C',
+    shadowColor: SHADOW_TINT,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
     elevation: 5,
   },
   analyzeButtonDisabled: {
@@ -727,22 +726,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   analyzeButtonText: {
+    fontFamily: FONTS.extrabold,
     fontSize: 17,
-    fontWeight: '800',
-    color: '#ffffff',
-    letterSpacing: 0.3,
+    color: COLORS.white,
+    letterSpacing: 0.2,
   },
 
   // Error
   errorCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fef2f2',
+    backgroundColor: COLORS.redSoft,
     borderRadius: 14,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: COLORS.redBorder,
   },
   errorIcon: {
     fontSize: 18,
@@ -750,8 +749,9 @@ const styles = StyleSheet.create({
   },
   errorText: {
     flex: 1,
+    fontFamily: FONTS.medium,
     fontSize: 13,
-    color: '#dc2626',
+    color: COLORS.red,
     lineHeight: 19,
   },
 
@@ -768,26 +768,26 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: COLORS.border,
   },
   dividerText: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: '700',
-    color: '#334155',
+    color: COLORS.textMid,
   },
 
   // Result Card
   resultCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.bgCard,
     borderRadius: 16,
     padding: 18,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#0f172a',
+    borderColor: COLORS.border,
+    shadowColor: SHADOW_TINT,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
     elevation: 2,
   },
   resultCardHeader: {
@@ -800,9 +800,9 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   resultCardTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: '700',
-    color: '#334155',
+    color: COLORS.textMid,
   },
 
   // Plant Chips
@@ -812,35 +812,36 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   plantChip: {
-    backgroundColor: '#f0fdf4',
-    borderRadius: 20,
+    backgroundColor: COLORS.successSoft,
+    borderRadius: 100,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#bbf7d0',
+    borderColor: COLORS.successBorder,
   },
   plantChipText: {
+    fontFamily: FONTS.semibold,
     fontSize: 14,
-    fontWeight: '600',
-    color: '#16a34a',
+    color: COLORS.success,
   },
   noDataText: {
+    fontFamily: FONTS.regular,
     fontSize: 13,
-    color: '#94a3b8',
+    color: COLORS.textMuted,
     fontStyle: 'italic',
   },
 
   // Health Badge
   healthBadge: {
-    borderRadius: 14,
+    borderRadius: 12,
     paddingHorizontal: 18,
     paddingVertical: 12,
     alignItems: 'center',
     borderWidth: 1,
   },
   healthBadgeText: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: '700',
   },
 
   // Risk Score
@@ -851,23 +852,23 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   riskScoreValue: {
+    fontFamily: FONTS.black,
     fontSize: 42,
-    fontWeight: '900',
     letterSpacing: -1,
   },
   riskLabel: {
-    borderRadius: 10,
+    borderRadius: 100,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderWidth: 1,
   },
   riskLabelText: {
+    fontFamily: FONTS.bold,
     fontSize: 13,
-    fontWeight: '700',
   },
   riskBarBackground: {
     height: 8,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: COLORS.borderSoft,
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -883,7 +884,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: COLORS.borderSoft,
   },
   detectionLeft: {
     flexDirection: 'row',
@@ -895,24 +896,24 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#7DA78C',
+    backgroundColor: COLORS.primary,
   },
   detectionName: {
+    fontFamily: FONTS.medium,
     fontSize: 14,
-    color: '#334155',
-    fontWeight: '500',
+    color: COLORS.textMid,
     flex: 1,
   },
   confidenceBadge: {
-    backgroundColor: '#f0f5f2',
+    backgroundColor: COLORS.primarySoft,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   confidenceText: {
+    fontFamily: FONTS.bold,
     fontSize: 13,
-    fontWeight: '700',
-    color: '#7DA78C',
+    color: COLORS.primaryText,
   },
 
   // Disease Section
@@ -921,25 +922,25 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   diseaseSectionTitle: {
+    fontFamily: FONTS.extrabold,
     fontSize: 16,
-    fontWeight: '800',
-    color: '#0f172a',
+    color: COLORS.textDark,
   },
 
   // Disease Card
   diseaseCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.bgCard,
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: COLORS.border,
     borderLeftWidth: 4,
-    borderLeftColor: '#ef4444',
-    shadowColor: '#0f172a',
+    borderLeftColor: COLORS.red,
+    shadowColor: SHADOW_TINT,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
     elevation: 2,
   },
   diseaseHeader: {
@@ -952,28 +953,29 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 10,
-    backgroundColor: '#fef2f2',
+    backgroundColor: COLORS.redSoft,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: COLORS.redBorder,
   },
   diseaseNumber: {
+    fontFamily: FONTS.extrabold,
     fontSize: 14,
-    fontWeight: '800',
-    color: '#ef4444',
+    color: COLORS.red,
   },
   diseaseNameContainer: {
     flex: 1,
   },
   diseaseName: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
+    color: COLORS.textDark,
   },
   diseaseNameEn: {
+    fontFamily: FONTS.regular,
     fontSize: 12,
-    color: '#94a3b8',
+    color: COLORS.textMuted,
     marginTop: 2,
     fontStyle: 'italic',
   },
@@ -989,7 +991,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: COLORS.successSoft,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1000,33 +1002,34 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   treatmentLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 12,
-    fontWeight: '700',
-    color: '#64748b',
+    color: COLORS.textSoft,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 3,
   },
   treatmentText: {
+    fontFamily: FONTS.regular,
     fontSize: 14,
-    color: '#334155',
+    color: COLORS.textMid,
     lineHeight: 20,
   },
 
   // Reset Button
   resetButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.bgCard,
     height: 52,
-    borderRadius: 14,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
     borderWidth: 2,
-    borderColor: '#7DA78C',
+    borderColor: COLORS.primary,
   },
   resetButtonText: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: '700',
-    color: '#7DA78C',
+    color: COLORS.primaryText,
   },
 });
