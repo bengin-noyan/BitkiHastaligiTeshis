@@ -161,9 +161,8 @@ export default function LoginScreen() {
 
           {/* Bottom Badge */}
           <View style={styles.bottomBadge}>
-            <Text style={styles.badgeLine}>🎓</Text>
             <Text style={styles.badgeText}>
-              Pamukkale Üniversitesi · YBS Bitirme Projesi
+              © 2026 Tarımsal Analiz Sistemi
             </Text>
           </View>
         </ScrollView>
@@ -348,15 +347,11 @@ const styles = StyleSheet.create({
     marginTop: 34,
     paddingVertical: 12,
   },
-  badgeLine: {
-    fontSize: 20,
-    marginBottom: 6,
-  },
   badgeText: {
     fontFamily: FONTS.medium,
     fontSize: 12,
     color: COLORS.textMuted,
     textAlign: 'center',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
 });
