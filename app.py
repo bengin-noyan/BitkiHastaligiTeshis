@@ -3,7 +3,6 @@ from datetime import datetime
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from ultralytics import YOLO
 from PIL import Image
 import firebase_admin
 from firebase_admin import credentials
@@ -389,6 +388,7 @@ section[data-testid="stSidebar"] .stButton > button:hover { background: var(--re
     border: none !important;
     border-radius: 0 !important;
     color: var(--text-dark) !important;
+    caret-color: var(--text-dark) !important;
     padding: 0.7rem 1rem !important;
     font-family: 'Inter', sans-serif !important;
     font-size: 0.92rem !important;
@@ -396,7 +396,7 @@ section[data-testid="stSidebar"] .stButton > button:hover { background: var(--re
     height: auto !important;
     outline: none !important;
 }
-.stTextInput input:focus { box-shadow: none !important; border: none !important; }
+.stTextInput input:focus { box-shadow: none !important; border: none !important; caret-color: var(--text-dark) !important; }
 .stTextInput input::placeholder { color: var(--text-muted) !important; }
 .stTextInput label { color: var(--text-soft) !important; font-weight: 500 !important; font-size: 0.85rem !important; }
 
@@ -454,14 +454,34 @@ if "lang" not in st.session_state:
 
 @st.cache_resource
 def load_model():
-    return YOLO("plantdoc_150epoch.pt")
-model = load_model()
+    # Ağır ultralytics/torch import'unu da erteler; sadece analiz gerektiğinde yüklenir
+    from ultralytics import YOLO
+    m = YOLO("plantdoc_150epoch.pt")
+    # İlk gerçek analizdeki gecikmeyi önlemek için modeli boş bir görselle önceden ısıt
+    try:
+        m.predict(source=Image.new("RGB", (640, 640)), imgsz=640, verbose=False)
+    except Exception:
+        pass
+    return m
+
+# Firebase'den hastalık bilgisini önbellekli oku — aynı hastalık için tekrar tekrar
+# ağ sorgusu yapılmasını engeller (Streamlit her etkileşimde script'i baştan çalıştırır)
+@st.cache_data(ttl=3600, show_spinner=False)
+def hastalik_bilgisi_getir(db_key, lang_key):
+    try:
+        doc = db.collection("hastaliklar").document(db_key).get()
+        if doc.exists:
+            doc_data = doc.to_dict()
+            if doc_data and isinstance(doc_data, dict):
+                return doc_data.get(lang_key, {})
+    except Exception as e:
+        print(f"Firebase okuma hatası: {e}")
+    return {}
 
 # ─── DİL AYARLARI ────────────────────────────────────────────
 LANGS = {
     "Türkçe": {
         "sidebar_title": "Kontrol Paneli",
-        "sidebar_info":  "YBS Bitirme Projesi · 2026",
         "conf_label":    "Yapay Zekâ Güven Skoru",
         "conf_info_title": "Güven Skoru Nedir?",
         "conf_info_body":  "Modelin bir tespiti geçerli sayması için gereken minimum olasılık eşiğidir. Değeri <b>yükseltirseniz</b> yalnızca yüksek olasılıklı (kesin) tespitler gösterilir; <b>düşürürseniz</b> daha fazla tespit listelenir ancak yanlış tespit riski artar.",
@@ -502,7 +522,6 @@ LANGS = {
         "feature_desc":  "Üretici dostu, yüksek doğruluklu, hızlı analiz sunan bir teşhis sistemi.",
         # Login page
         "lang_label":         "Dil / Language",
-        "badge_text":         "Pamukkale Üniversitesi · YBS Bitirme Projesi",
         "lp_subtitle":        "Yapay zekâ destekli bitki hastalığı teşhisi<br>ve tarımsal verim analizi platformu",
         "tab_login":          "Giriş Yap",
         "tab_register":       "Kayıt Ol",
@@ -525,7 +544,7 @@ LANGS = {
         "err_user_taken":     "Bu kullanıcı adı zaten alınmış. Lütfen farklı bir ad deneyin.",
         "pill_accuracy":      "Doğruluk",
         "pill_analysis":      "Analiz",
-        "pill_classes":       "Hastalık Sınıfı",
+        "pill_classes":       "Toplam Analiz Sınıfı",
         "footer_scroll":      "↓ Sistem hakkında daha fazla bilgi için aşağı kaydır",
         "sec1_tag":           "PROJEMİZ HAKKINDA",
         "sec1_title":         "Tarımda Yapay Zekâ Devrimi",
@@ -547,14 +566,14 @@ LANGS = {
         "sec3_title":         "Neden Bu Platform?",
         "sec3_lede":          "Sadece bir teşhis aracı değil; aynı zamanda kişisel bir tarımsal veri yönetim sistemi.",
         "feat1_t":            "Çoklu Bitki Desteği",
-        "feat1_d":            "Domates, elma, üzüm, mısır ve daha pek çok ürün için 14 bitki türü, 29 hastalık sınıfı.",
+        "feat1_d":            "Domates, elma, üzüm, mısır ve daha pek çok ürün için 14 bitki türü, 38 toplam analiz kapasitesi.",
         "feat2_t":            "Anlık Sonuç",
         "feat2_d":            "Ortalama 2 saniyenin altında analiz süresi. Tarladayken bile pratik karar desteği.",
         "feat3_t":            "Akıllı Dashboard",
         "feat3_d":            "Geçmiş analizlerin KPI metrikleri, dağılım grafikleri ve detaylı tablolarla görselleştirilir.",
         "feat4_t":            "Veri İzolasyonu",
         "feat4_d":            "Her kullanıcı yalnızca kendi kayıtlarına erişebilir. Verilerin güvenli, gizli ve yönetilebilirdir.",
-        "copyright":          "© 2026 Tarımsal Analiz Sistemi · YBS Bitirme Projesi · Tüm hakları saklıdır",
+        "copyright":          "© 2026 Tarımsal Analiz Sistemi · Tüm hakları saklıdır",
         # Sidebar / main app shell
         "logo_text":          "Tarımsal Analiz",
         "logo_sub":           "AI DESTEKLİ SİSTEM",
@@ -570,7 +589,7 @@ LANGS = {
         "kpi_acc_d":          "YOLOv8 Medium",
         "kpi_time":           "ANALİZ SÜRESİ",
         "kpi_time_d":         "Gerçek zamanlı",
-        "kpi_dis":            "Hastalık Sınıfı",
+        "kpi_dis":            "TOPLAM ANALİZ SINIFI",
         "kpi_dis_d":          "PlantDoc Dataset",
         "kpi_plants":         "DESTEKLENEN BİTKİ",
         "kpi_plants_d":       "Tarım ürünleri",
@@ -625,7 +644,6 @@ LANGS = {
     },
     "English": {
         "sidebar_title": "Control Panel",
-        "sidebar_info":  "MIS Graduation Project · 2026",
         "conf_label":    "AI Confidence Score",
         "conf_info_title": "What is the Confidence Score?",
         "conf_info_body":  "The minimum probability threshold for the model to accept a detection as valid. <b>Higher values</b> display only high-probability (more certain) detections; <b>lower values</b> list more detections but increase the risk of false positives. Recommended starting value: <b>0.25</b>.",
@@ -666,7 +684,6 @@ LANGS = {
         "feature_desc":  "A farmer-friendly, high-accuracy, fast-analysis diagnostic system.",
         # Login page
         "lang_label":         "Dil / Language",
-        "badge_text":         "Pamukkale University · MIS Graduation Project",
         "lp_subtitle":        "AI-powered plant disease diagnosis<br>and agricultural productivity analysis platform",
         "tab_login":          "Sign In",
         "tab_register":       "Sign Up",
@@ -711,14 +728,14 @@ LANGS = {
         "sec3_title":         "Why This Platform?",
         "sec3_lede":          "Not just a diagnostic tool; it is also a personal agricultural data management system.",
         "feat1_t":            "Multi-Plant Support",
-        "feat1_d":            "14 plant species and 29 disease classes for tomato, apple, grape, corn and many other crops.",
+        "feat1_d":            "14 plant species and 38 disease classes for tomato, apple, grape, corn and many other crops.",
         "feat2_t":            "Instant Results",
         "feat2_d":            "Average analysis time under 2 seconds. Practical decision support even while in the field.",
         "feat3_t":            "Smart Dashboard",
         "feat3_d":            "Your past analyses are visualized with KPI metrics, distribution charts and detailed tables.",
         "feat4_t":            "Data Isolation",
         "feat4_d":            "Each user can only access their own records. Your data is secure, private and manageable.",
-        "copyright":          "© 2026 Agricultural Analysis System · MIS Graduation Project · All rights reserved",
+        "copyright":          "© 2026 Agricultural Analysis System · All rights reserved",
         # Sidebar / main app shell
         "logo_text":          "Agri Analysis",
         "logo_sub":           "AI POWERED SYSTEM",
@@ -734,7 +751,7 @@ LANGS = {
         "kpi_acc_d":          "YOLOv8 Medium",
         "kpi_time":           "Analysis Time",
         "kpi_time_d":         "Real-time",
-        "kpi_dis":            "Disease Classes",
+        "kpi_dis":            "Total Analysis Classes",
         "kpi_dis_d":          "PlantDoc Dataset",
         "kpi_plants":         "Supported Plants",
         "kpi_plants_d":       "Crops",
@@ -992,15 +1009,6 @@ def login_page():
             label_visibility="collapsed",
         )
     T = LANGS[st.session_state.lang]
-
-    _, c, _ = st.columns([1, 1.5, 1])
-    with c:
-        st.markdown(
-            f'<div style="text-align:center;padding:0 0 16px 0;">'
-            f'<span class="lp-badge"><span class="lp-badge-dot"></span> {T["badge_text"]}</span>'
-            f'</div>',
-            unsafe_allow_html=True
-        )
 
     _, col, _ = st.columns([1, 1.5, 1])
     with col:
@@ -1328,7 +1336,7 @@ def main_app():
             border:1px solid #e5e7eb;border-radius:100px;
             padding:4px 14px;font-size:0.7rem;
             color:#64748b !important;font-weight:600;letter-spacing:0.04em;">
-            v2.0 · YBS 2026
+            v2.0
         </span>
     </div>
     """, unsafe_allow_html=True)
@@ -1395,9 +1403,9 @@ def ana_analiz_sayfasi(T, lang):
 
     c1, c2, c3, c4 = st.columns(4)
     with c1: st.metric(T["kpi_acc"],    "%94",  T["kpi_acc_d"])
-    with c2: st.metric(T["kpi_time"],   "<2 sn", T["kpi_time_d"])
-    with c3: st.metric(T["kpi_dis"],    "29",    T["kpi_dis_d"])
-    with c4: st.metric(T["kpi_plants"], "13",    T["kpi_plants_d"])
+    with c2: st.metric(T["kpi_time"],   "<1 sn", T["kpi_time_d"])
+    with c3: st.metric(T["kpi_dis"],    "38",    T["kpi_dis_d"])
+    with c4: st.metric(T["kpi_plants"], "14",    T["kpi_plants_d"])
 
     st.write("")
     st.write("")
@@ -1415,9 +1423,6 @@ def ana_analiz_sayfasi(T, lang):
             <span style="color:#0f172a;font-size:1rem;font-weight:700;letter-spacing:-0.01em;">
                 {T['sidebar_title']}
             </span>
-        </div>
-        <div style="color:#94a3b8;font-size:0.78rem;margin-bottom:4px;font-weight:500;">
-            {T['sidebar_info']}
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1527,7 +1532,8 @@ def ana_analiz_sayfasi(T, lang):
 
         if run_btn:
             with col1, st.spinner(T["spinner"]):
-                res = model.predict(source=img, conf=conf, imgsz=800)
+                model = load_model()
+                res = model.predict(source=img, conf=conf, imgsz=640, verbose=False)
                 st.session_state.plot      = res[0].plot()[:, :, ::-1]
                 st.session_state.classes   = [model.names[int(c)] for c in res[0].boxes.cls]
                 st.session_state.confs     = [float(c) for c in res[0].boxes.conf]
@@ -1617,34 +1623,12 @@ def ana_analiz_sayfasi(T, lang):
                                     break
 
                             lang_key = "TR" if lang == "Türkçe" else "EN"
-                            bilgi = {} # Varsayılan boş sözlük
-                            
-                            try:
-                                doc = db.collection("hastaliklar").document(db_key).get()
-                                if doc.exists:
-                                    doc_data = doc.to_dict()
-                                    if doc_data and isinstance(doc_data, dict):
-                                        bilgi = doc_data.get(lang_key, {})
-                            except Exception as e:
-                                print(f"Firebase okuma hatası: {e}")
 
-                            fallback = { "ilac": T["db_err"], "sonuc": T["db_err"], "ekonomi": T["db_err"] }
-                            bilgi = {**fallback, **bilgi}
-                            
-                            try:
-                                doc = db.collection("hastaliklar").document(db_key).get()
-                                if doc.exists:
-                                    doc_data = doc.to_dict()
-                                    # Veri çekilmişse ve boş değilse lang_key'i ara
-                                    if doc_data and isinstance(doc_data, dict):
-                                        bilgi = doc_data.get(lang_key, {})
-                            except Exception as e:
-                                print(f"Firebase okuma hatası: {e}") # Terminale hatayı basar ama uygulamayı çökertmez
+                            # Önbellekli tek okuma (daha önce iki kez sorgulanıyordu)
+                            bilgi = hastalik_bilgisi_getir(db_key, lang_key)
 
-                            # Eğer bilgi sözlüğü hala boşsa veya beklenen anahtarlar yoksa güvenli veriyi doldur
+                            # Eksik anahtarlar varsa güvenli varsayılanlardan tamamla
                             fallback = { "ilac": T["db_err"], "sonuc": T["db_err"], "ekonomi": T["db_err"] }
-                            
-                            # Güvenli birleştirme (Eksik anahtarlar varsa fallback'ten tamamlar)
                             bilgi = {**fallback, **bilgi}
 
                             with st.expander(T["exp_title"].format(display), expanded=True):
@@ -1861,12 +1845,15 @@ def ana_analiz_sayfasi(T, lang):
             padding:24px 0 8px 0;
             border-top:1px solid #e5e7eb;
             margin-top:24px;
+            width:100%;
         ">
             <p style="
                 color:#94a3b8;
                 font-size:0.8rem;
-                margin:0;
+                margin:0 auto;
                 font-weight:500;
+                text-align:center;
+                width:100%;
             ">
                 {T['copyright']}
             </p>
