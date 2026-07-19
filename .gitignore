@@ -1,27 +1,28 @@
-# 🐍 Python ve Sanal Ortamlar
+# Python ve Sanal Ortamlar
 .venv/
 .venv1/
 venv1/
 __pycache__/
 *.pyc
 
-# 🧠 Yapay Zeka Modelleri ve Eğitim Çıktıları
+# Yapay Zeka Modelleri ve Eğitim Çıktıları
 *.pt
 *.onnx
 *.h5
 runs/
 
-# 🗂️ Veri Setleri ve Test Görselleri
+# Veri Setleri ve Test Görselleri
 data/
 datasets/
 Plant-Disease-1/
 *.jpg
 
-# 💻 IDE ve Sistem Dosyaları (VS Code / PyCharm)
+# IDE ve Sistem Dosyaları (VS Code / PyCharm)
 .idea/
 .vs/
 .DS_Store
 
-# 🔒 Güvenlik ve Yerel Veritabanı (ÇOK KRİTİK)
+# Güvenlik ve Yerel Veritabanı (ÇOK KRİTİK)
 firebase_key.json
 *.db
+.streamlit/secrets.toml

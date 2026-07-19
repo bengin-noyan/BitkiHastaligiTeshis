@@ -1,12 +1,12 @@
+import os
+import threading
 import sqlite3
 from datetime import datetime
 import streamlit as st
-import pandas as pd
-import plotly.express as px
 from PIL import Image
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import firestore
+# Ağır kütüphaneler (pandas, plotly, firebase) modül açılışında değil,
+# yalnızca gerçekten gerektiğinde (analiz/geçmiş sayfalarında) import edilir —
+# böylece login ekranı çok daha hızlı açılır.
 
 # ─── SQL VERİTABANI BAĞLANTISI VE KURULUMU ──────────────────
 conn = sqlite3.connect('tarimsal_analiz.db', check_same_thread=False)
@@ -356,6 +356,20 @@ section[data-testid="stSidebar"] .stButton > button { background: #ffffff !impor
 section[data-testid="stSidebar"] .stButton > button * { color: var(--red) !important; }
 section[data-testid="stSidebar"] .stButton > button:hover { background: var(--red-soft) !important; border-color: #fca5a5 !important; }
 
+/* Form submit butonları (Giriş Yap / Kayıt Ol) — normal primary buton ile birebir aynı görünüm */
+[data-testid="stFormSubmitButton"] { width: 100% !important; }
+[data-testid="stFormSubmitButton"] button {
+    width: 100% !important; border-radius: 10px !important; font-weight: 600 !important; font-family: 'Inter', sans-serif !important;
+    transition: all 0.2s ease !important; font-size: 0.9rem !important; padding: 0.7rem 1.4rem !important; letter-spacing: 0.01em;
+    background: var(--primary) !important; color: #ffffff !important; border: 1px solid var(--primary) !important; box-shadow: none !important;
+}
+[data-testid="stFormSubmitButton"] button * { color: #ffffff !important; }
+[data-testid="stFormSubmitButton"] button:hover {
+    background: var(--primary-dark) !important; border-color: var(--primary-dark) !important; transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(125,167,140,0.20) !important;
+}
+[data-testid="stFormSubmitButton"] button:active { transform: translateY(0) !important; }
+
 .stApp img { border-radius: 12px !important; border: 1px solid var(--border) !important; box-shadow: 0 1px 3px rgba(15,23,42,0.04) !important; transition: all 0.25s ease !important; }
 .stApp img:hover { box-shadow: 0 6px 18px rgba(125,167,140,0.08) !important; }
 
@@ -434,17 +448,18 @@ section[data-testid="stSidebar"] .stButton > button:hover { background: var(--re
 ::-webkit-scrollbar-track { background: var(--border-soft); }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to   { opacity: 1; transform: translateY(0); } }
-.stApp [data-testid="stVerticalBlock"] > div { animation: fadeInUp 0.35s ease-out; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─── FIREBASE BAĞLANTISI ────────────────────────────────────
-if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase_key.json")
-    firebase_admin.initialize_app(cred)
-db = firestore.client()
+# ─── FIREBASE BAĞLANTISI (tembel: yalnızca ilk gerekli olduğunda başlatılır) ───
+@st.cache_resource(show_spinner=False)
+def get_db():
+    import firebase_admin
+    from firebase_admin import credentials, firestore
+    if not firebase_admin._apps:
+        cred = credentials.Certificate("firebase_key.json")
+        firebase_admin.initialize_app(cred)
+    return firestore.client()
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -452,9 +467,9 @@ if "logged_in" not in st.session_state:
 if "lang" not in st.session_state:
     st.session_state.lang = "Türkçe"
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def load_model():
-    # Ağır ultralytics/torch import'unu da erteler; sadece analiz gerektiğinde yüklenir
+    os.environ["YOLO_VERBOSE"] = "False"  # Ultralytics banner/log çıktısını kapat
     from ultralytics import YOLO
     m = YOLO("plantdoc_150epoch.pt")
     # İlk gerçek analizdeki gecikmeyi önlemek için modeli boş bir görselle önceden ısıt
@@ -464,12 +479,27 @@ def load_model():
         pass
     return m
 
+def modeli_onyukle_arkaplan():
+    """Kullanıcı login ekranında bilgilerini girerken modeli sessizce, arka planda
+    yükler. Böylece giriş sonrası ilk analiz beklemesiz olur; login ekranı ise
+    thread UI çizildikten sonra başlatıldığı için hızlı açılmaya devam eder."""
+    if st.session_state.get("_model_onyukleme"):
+        return
+    st.session_state._model_onyukleme = True
+    t = threading.Thread(target=load_model, daemon=True)
+    try:
+        from streamlit.runtime.scriptrunner import add_script_run_ctx
+        add_script_run_ctx(t)
+    except Exception:
+        pass
+    t.start()
+
 # Firebase'den hastalık bilgisini önbellekli oku — aynı hastalık için tekrar tekrar
 # ağ sorgusu yapılmasını engeller (Streamlit her etkileşimde script'i baştan çalıştırır)
 @st.cache_data(ttl=3600, show_spinner=False)
 def hastalik_bilgisi_getir(db_key, lang_key):
     try:
-        doc = db.collection("hastaliklar").document(db_key).get()
+        doc = get_db().collection("hastaliklar").document(db_key).get()
         if doc.exists:
             doc_data = doc.to_dict()
             if doc_data and isinstance(doc_data, dict):
@@ -477,6 +507,71 @@ def hastalik_bilgisi_getir(db_key, lang_key):
     except Exception as e:
         print(f"Firebase okuma hatası: {e}")
     return {}
+
+# Gemini ile hastalık için gerçek zamanlı öneri üret — teşhis edilen tam hastalık
+# ismini ve bitkiyi modele gönderip yapılandırılmış (JSON) öneri alır.
+# Önbellekli: aynı hastalık için 24 saat tek çağrı yeter (kota/maliyet/hız).
+@st.cache_data(ttl=86400, show_spinner=False)
+def llm_ile_oneri_getir(hastalik_ismi, bitki, lang_key):
+    try:
+        api_key = st.secrets.get("GEMINI_API_KEY", "")
+        if not api_key or api_key.startswith("BURAYA"):
+            return None  # key ayarlı değil → çağıran taraf Firestore'a düşer
+
+        from google import genai
+        client = genai.Client(api_key=api_key)
+
+        dil = "Türkçe" if lang_key == "TR" else "English"
+        seviyeler = "Düşük, Orta, Yüksek" if lang_key == "TR" else "Low, Medium, High"
+        prompt = (
+            f"Sen deneyimli bir zirai uzmansın. '{bitki}' bitkisinde görülen "
+            f"'{hastalik_ismi.replace('_', ' ')}' hastalığı için pratik saha önerisi ver. "
+            f"Cevabı {dil} dilinde yaz. Yalnızca şu alanları içeren JSON döndür: "
+            f"ilac (önerilen ilaç/etken madde ve uygulama), "
+            f"sonuc (tedavi edilmezse muhtemel sonuç), "
+            f"ekonomi (verim/ekonomik etki ve kısa tavsiye), "
+            f"verim_kaybi_aralik (tedavi edilmezse tahmini verim kaybı yüzde aralığı; "
+            f"aralığı DAR ve gerçekçi tut — alt ve üst sınır farkı en fazla 15 puan olsun, "
+            f"örn '%25-35' gibi), "
+            f"verim_kaybi_seviye (yalnızca şu üç değerden biri: {seviyeler}), "
+            f"verim_kaybi_aciklama (bu tahminin tek cümlelik kısa gerekçesi). "
+            f"ilac, sonuc, ekonomi alanları en fazla 2-3 cümle olsun."
+        )
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "ilac":    {"type": "string"},
+                "sonuc":   {"type": "string"},
+                "ekonomi": {"type": "string"},
+                "verim_kaybi_aralik":   {"type": "string"},
+                "verim_kaybi_seviye":   {"type": "string"},
+                "verim_kaybi_aciklama": {"type": "string"},
+            },
+            "required": ["ilac", "sonuc", "ekonomi",
+                         "verim_kaybi_aralik", "verim_kaybi_seviye", "verim_kaybi_aciklama"],
+        }
+
+        resp = client.models.generate_content(
+            model="gemini-flash-lite-latest",  # hızlı+ucuz, hep en güncel flash-lite'ı işaret eder
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": schema,
+                "temperature": 0.3,
+                # Modelin "düşünme" (reasoning) aşamasını kapat: bu görev
+                # yapılandırılmış kısa bir JSON ürettiği için düşünmeye gerek yok.
+                # Düşünme bütçesini 0'a çekmek yanıt süresini birkaç saniye kısaltır
+                # (prompt ve çıktı aynı kalır, yalnızca gecikme düşer).
+                "thinking_config": {"thinking_budget": 0},
+            },
+        )
+
+        import json
+        return json.loads(resp.text)
+    except Exception as e:
+        print(f"Gemini öneri hatası: {e}")
+        return None  # hata → çağıran taraf Firestore fallback'ine düşer
 
 # ─── DİL AYARLARI ────────────────────────────────────────────
 LANGS = {
@@ -496,11 +591,14 @@ LANGS = {
         "img_cap_orig":  "Yüklenen Görsel",
         "analyze_btn":   "Analizi Başlat",
         "spinner":       "Görsel inceleniyor...",
+        "spinner_report":  "Uzman raporu hazırlanıyor...",
+        "spinner_advice":  "Uzman önerisi hazırlanıyor...",
         "img_cap_res":   "Teşhis Sonucu",
         "col2_sub":      "Verimlilik Raporu",
         "plant_label":   "Analiz Edilen Bitki",
         "no_plant":      "Sistem bu görselde bir tarım ürünü tespit edemedi.",
         "risk_label":    "TAHMİNİ VERİM KAYBI RİSKİ",
+        "vk_seviye":     "Risk seviyesi",
         "waiting":       "Bekleniyor",
         "healthy":       "Tespit edilen **{}** yaprakları tamamen sağlıklı.",
         "disease":       "Görselde {} adet enfekte bölge tespit edildi.",
@@ -537,6 +635,8 @@ LANGS = {
         "confirm_password_ph":"Şifrenizi tekrar girin",
         "btn_login":          "Giriş Yap",
         "btn_register":       "Kayıt Ol",
+        "form_enter_hint":    "Giriş yapmak için Enter'a basın",
+        "form_enter_hint_register": "Kayıt olmak için Enter'a basın",
         "err_invalid":        "Kullanıcı adı veya şifre hatalı.",
         "warn_fill_all":      "Lütfen tüm alanları doldurun.",
         "err_mismatch":       "Şifreler uyuşmuyor, lütfen kontrol edin!",
@@ -568,7 +668,7 @@ LANGS = {
         "feat1_t":            "Çoklu Bitki Desteği",
         "feat1_d":            "Domates, elma, üzüm, mısır ve daha pek çok ürün için 14 bitki türü, 38 toplam analiz kapasitesi.",
         "feat2_t":            "Anlık Sonuç",
-        "feat2_d":            "Ortalama 2 saniyenin altında analiz süresi. Tarladayken bile pratik karar desteği.",
+        "feat2_d":            "Ortalama 1 saniyenin altında analiz süresi. Tarladayken bile pratik karar desteği.",
         "feat3_t":            "Akıllı Dashboard",
         "feat3_d":            "Geçmiş analizlerin KPI metrikleri, dağılım grafikleri ve detaylı tablolarla görselleştirilir.",
         "feat4_t":            "Veri İzolasyonu",
@@ -602,7 +702,7 @@ LANGS = {
         "feature_high_acc_t": "Yüksek Doğruluk",
         "feature_high_acc_d": "YOLOv8 Medium modeli ile %94+ doğruluk oranı. PlantDoc veri seti üzerinde 150 epoch eğitildi.",
         "feature_fast_t":     "Hızlı Analiz",
-        "feature_fast_d":     "Görsel yüklendikten 2 saniyeden kısa sürede teşhis. Anlık geri bildirim ve raporlama.",
+        "feature_fast_d":     "Görsel yüklendikten 1 saniyeden kısa sürede teşhis. Anlık geri bildirim ve raporlama.",
         "feature_smart_t":    "Akıllı Raporlama",
         "feature_smart_d":    "Hastalık teşhisi sonrası ilaçlama önerisi, finansal etki ve zirai beklenti raporu.",
         # History page
@@ -658,11 +758,14 @@ LANGS = {
         "img_cap_orig":  "Uploaded Image",
         "analyze_btn":   "Start Analysis",
         "spinner":       "Analyzing image...",
+        "spinner_report":  "Preparing expert report...",
+        "spinner_advice":  "Preparing expert advice...",
         "img_cap_res":   "Diagnosis Result",
         "col2_sub":      "Productivity Report",
         "plant_label":   "Analyzed Plant",
         "no_plant":      "No agricultural product detected in this image.",
         "risk_label":    "YIELD LOSS RISK",
+        "vk_seviye":     "Risk level",
         "waiting":       "Waiting",
         "healthy":       "**{}** leaves are perfectly healthy.",
         "disease":       "{} infected areas detected.",
@@ -699,6 +802,8 @@ LANGS = {
         "confirm_password_ph":"Re-enter your password",
         "btn_login":          "Sign In",
         "btn_register":       "Sign Up",
+        "form_enter_hint":    "Press Enter to sign in",
+        "form_enter_hint_register": "Press Enter to sign up",
         "err_invalid":        "Invalid username or password.",
         "warn_fill_all":      "Please fill in all fields.",
         "err_mismatch":       "Passwords do not match, please check!",
@@ -730,7 +835,7 @@ LANGS = {
         "feat1_t":            "Multi-Plant Support",
         "feat1_d":            "14 plant species and 38 disease classes for tomato, apple, grape, corn and many other crops.",
         "feat2_t":            "Instant Results",
-        "feat2_d":            "Average analysis time under 2 seconds. Practical decision support even while in the field.",
+        "feat2_d":            "Average analysis time under 1 second. Practical decision support even while in the field.",
         "feat3_t":            "Smart Dashboard",
         "feat3_d":            "Your past analyses are visualized with KPI metrics, distribution charts and detailed tables.",
         "feat4_t":            "Data Isolation",
@@ -764,7 +869,7 @@ LANGS = {
         "feature_high_acc_t": "High Accuracy",
         "feature_high_acc_d": "Over 94% accuracy with the YOLOv8 Medium model. Trained for 150 epochs on the PlantDoc dataset.",
         "feature_fast_t":     "Fast Analysis",
-        "feature_fast_d":     "Diagnosis in less than 2 seconds after upload. Instant feedback and reporting.",
+        "feature_fast_d":     "Diagnosis in less than 1 second after upload. Instant feedback and reporting.",
         "feature_smart_t":    "Smart Reporting",
         "feature_smart_d":    "After diagnosis: treatment recommendations, financial impact and agronomic outlook.",
         # History page
@@ -1010,6 +1115,14 @@ def login_page():
         )
     T = LANGS[st.session_state.lang]
 
+    # Streamlit'in İngilizce "Press Enter to submit form" ipucunu gizle; her formun
+    # kendi lokalize ve sekmeye özel ipucunu form içinde ayrıca göstereceğiz.
+    st.markdown("""
+    <style>
+    [data-testid="InputInstructions"] { display: none !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
     _, col, _ = st.columns([1, 1.5, 1])
     with col:
         st.markdown(f"""
@@ -1025,11 +1138,14 @@ def login_page():
 
         # 1. GİRİŞ SEKME İÇERİĞİ
         with tab_giris:
-            username = st.text_input(T["username"], placeholder=T["username_ph"], key="login_user")
-            password = st.text_input(T["password"], type="password", placeholder=T["password_ph"], key="login_pass")
-            st.write("")
+            with st.form("login_form", clear_on_submit=False, border=False):
+                username = st.text_input(T["username"], placeholder=T["username_ph"], key="login_user")
+                password = st.text_input(T["password"], type="password", placeholder=T["password_ph"], key="login_pass")
+                st.write("")
+                giris_yap = st.form_submit_button(T["btn_login"], use_container_width=True, type="primary")
+                st.markdown(f"<div style='text-align:right;font-size:0.72rem;color:#94a3b8;margin-top:6px;'>{T['form_enter_hint']}</div>", unsafe_allow_html=True)
 
-            if st.button(T["btn_login"], use_container_width=True, type="primary", key="btn_login"):
+            if giris_yap:
                 kullanici_adi_girilen = username.strip().lower()
                 sifre_girilen = password.strip()
 
@@ -1048,12 +1164,15 @@ def login_page():
 
         # 2. KAYIT SEKME İÇERİĞİ
         with tab_kayit:
-            new_user = st.text_input(T["new_username"], placeholder=T["new_username_ph"], key="reg_user")
-            new_pass = st.text_input(T["new_password"], type="password", placeholder=T["new_password_ph"], key="reg_pass")
-            new_pass2 = st.text_input(T["confirm_password"], type="password", placeholder=T["confirm_password_ph"], key="reg_pass2")
-            st.write("")
+            with st.form("register_form", clear_on_submit=False, border=False):
+                new_user = st.text_input(T["new_username"], placeholder=T["new_username_ph"], key="reg_user")
+                new_pass = st.text_input(T["new_password"], type="password", placeholder=T["new_password_ph"], key="reg_pass")
+                new_pass2 = st.text_input(T["confirm_password"], type="password", placeholder=T["confirm_password_ph"], key="reg_pass2")
+                st.write("")
+                kayit_ol = st.form_submit_button(T["btn_register"], use_container_width=True, type="primary")
+                st.markdown(f"<div style='text-align:right;font-size:0.72rem;color:#94a3b8;margin-top:6px;'>{T['form_enter_hint_register']}</div>", unsafe_allow_html=True)
 
-            if st.button(T["btn_register"], use_container_width=True, type="primary", key="btn_register"):
+            if kayit_ol:
                 if not new_user or not new_pass:
                     st.warning(T["warn_fill_all"])
                 elif new_pass != new_pass2:
@@ -1076,7 +1195,7 @@ def login_page():
         st.markdown(f"""
         <div class="lp-stats">
             <span class="lp-pill"><b>%94+</b> {T["pill_accuracy"]}</span>
-            <span class="lp-pill"><b>&lt;2sn</b> {T["pill_analysis"]}</span>
+            <span class="lp-pill"><b>&lt;1sn</b> {T["pill_analysis"]}</span>
             <span class="lp-pill"><b>38</b> {T["pill_classes"]}</span>
         </div>
         <div class="lp-footer-note">
@@ -1242,6 +1361,10 @@ def login_page():
         </p>
     </div>
     """, unsafe_allow_html=True)
+
+    # Login ekranı çizildikten SONRA modeli arka planda yüklemeye başla —
+    # kullanıcı giriş bilgilerini girerken model hazırlanır, ilk analiz beklemesiz olur.
+    modeli_onyukle_arkaplan()
 
 # ══════════════════════════════════════════════════════════
 #  ANA UYGULAMA
@@ -1429,7 +1552,10 @@ def ana_analiz_sayfasi(T, lang):
 
     kp1, kp2 = st.columns([1, 1.4], gap="large")
     with kp1:
-        conf = st.slider(T["conf_label"], min_value=0.00, max_value=1.00, value=0.25, step=0.01)
+        # Sabit key: dil değişince label değişse de slider değeri (ve dolayısıyla
+        # mevcut analiz sonucu) sıfırlanmaz — aksi halde Streamlit label'ı değişen
+        # widget'ı yeni sanıp varsayılana döner ve analizi tekrar yaptırırdı.
+        conf = st.slider(T["conf_label"], min_value=0.00, max_value=1.00, value=0.25, step=0.01, key="conf_slider")
         st.markdown(f"""
         <div style="
             background: linear-gradient(180deg, #ffffff 0%, var(--primary-soft) 100%);
@@ -1514,9 +1640,14 @@ def ana_analiz_sayfasi(T, lang):
     st.write("")
 
     if uploaded is not None:
-        if st.session_state.get("cur_img") != uploaded.name:
+        # Görsel veya güven skoru değiştiğinde önceki analiz sonucunu sıfırla.
+        # Analiz YALNIZCA "Analizi Başlat"a tıklanınca yapılır/gösterilir; slider
+        # oynatmak ya da aynı isimli yeni bir görsel yüklemek eski sonucu göstermez.
+        gorsel_kimlik = getattr(uploaded, "file_id", uploaded.name)
+        if st.session_state.get("cur_img") != gorsel_kimlik or st.session_state.get("cur_conf") != conf:
             st.session_state.analiz_ok = False
-            st.session_state.cur_img   = uploaded.name
+        st.session_state.cur_img  = gorsel_kimlik
+        st.session_state.cur_conf = conf
 
         col1, col2 = st.columns(2, gap="large")
         with col1:
@@ -1603,9 +1734,40 @@ def ana_analiz_sayfasi(T, lang):
                         st.metric(T["risk_label"], "%0", "Stabil", delta_color="normal")
                     else:
                         st.warning(T["disease"].format(len(sick)))
-                        avg_conf = sum(det_conf) / len(det_conf)
-                        risk = min(int(len(sick) * 15 * avg_conf) + 20, 95)
-                        st.metric(T["risk_label"], f"%{risk}", f"-{risk}% Potansiyel Kayıp", delta_color="inverse")
+                        lang_key = "TR" if lang == "Türkçe" else "EN"
+
+                        # Birincil (en yüksek güvenli) hastalığı seç ve verim kaybını
+                        # Gemini'den al. Bu çağrı aşağıdaki öneri döngüsüyle aynı olduğu
+                        # için önbellekten gelir — ekstra API maliyeti yoktur.
+                        sick_ciftler = [(c, cf) for c, cf in zip(det_cls, det_conf)
+                                        if any(k in c.lower() for k in dis_keys)]
+                        birincil = max(sick_ciftler, key=lambda x: x[1])[0] if sick_ciftler else sick[0]
+
+                        # Birincil hastalığı burada TEK sefer çek; hem verim kaybı metriği
+                        # hem de aşağıdaki öneri kartı bunu kullansın. Böylece aynı hastalık
+                        # için ikinci bir bekleme/spinner oluşmaz.
+                        onbellek_oneri = {}
+                        with st.spinner(T["spinner_report"]):
+                            vk = llm_ile_oneri_getir(birincil, plant_str, lang_key)
+                        onbellek_oneri[birincil] = vk
+
+                        if vk and vk.get("verim_kaybi_seviye"):
+                            seviye = vk.get("verim_kaybi_seviye", "")
+                            aralik = vk.get("verim_kaybi_aralik", "")
+                            aciklama = vk.get("verim_kaybi_aciklama", "")
+                            st.metric(T["risk_label"], aralik)
+                            st.markdown(
+                                f"<div style='font-size:0.9rem;color:#334155;line-height:1.5;margin-top:2px;'>"
+                                f"<b style='color:#0f172a;'>{T['vk_seviye']}:</b> "
+                                f"<b>{seviye}</b> — {aciklama}</div>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            # Gemini yoksa/başarısızsa eski yaklaşık formüle düş
+                            avg_conf = sum(det_conf) / len(det_conf)
+                            risk = min(int(len(sick) * 15 * avg_conf) + 20, 95)
+                            st.metric(T["risk_label"], f"%{risk}", f"-{risk}% Potansiyel Kayıp", delta_color="inverse")
+
                         st.write("")
                         st.markdown(T["plan_title"])
 
@@ -1624,14 +1786,23 @@ def ana_analiz_sayfasi(T, lang):
 
                             lang_key = "TR" if lang == "Türkçe" else "EN"
 
-                            # Önbellekli tek okuma (daha önce iki kez sorgulanıyordu)
-                            bilgi = hastalik_bilgisi_getir(db_key, lang_key)
-
-                            # Eksik anahtarlar varsa güvenli varsayılanlardan tamamla
-                            fallback = { "ilac": T["db_err"], "sonuc": T["db_err"], "ekonomi": T["db_err"] }
-                            bilgi = {**fallback, **bilgi}
-
                             with st.expander(T["exp_title"].format(display), expanded=True):
+                                # 1) Birincil hastalık yukarıda çekildiyse tekrar çekme/spinner gösterme;
+                                #    değilse (ek hastalıklar) Gemini'den gerçek zamanlı çek.
+                                if dis in onbellek_oneri:
+                                    bilgi = onbellek_oneri[dis]
+                                else:
+                                    with st.spinner(T["spinner_advice"]):
+                                        bilgi = llm_ile_oneri_getir(dis, plant_str, lang_key)
+
+                                # 2) Gemini yoksa/başarısızsa mevcut Firestore statik verisine düş
+                                if not bilgi:
+                                    bilgi = hastalik_bilgisi_getir(db_key, lang_key)
+
+                                # 3) Eksik anahtarlar varsa güvenli varsayılanlardan tamamla
+                                fallback = { "ilac": T["db_err"], "sonuc": T["db_err"], "ekonomi": T["db_err"] }
+                                bilgi = {**fallback, **bilgi}
+
                                 st.markdown(f"**{T['lbl_ilac']}:** {bilgi.get('ilac','')}")
                                 st.markdown(f"**{T['lbl_sonuc']}:** {bilgi.get('sonuc','')}")
                                 st.markdown(f"**{T['lbl_ekonomi']}:** {bilgi.get('ekonomi','')}")
@@ -1865,6 +2036,10 @@ def ana_analiz_sayfasi(T, lang):
 #  GEÇMİŞ ANALİZLERİM — Dashboard (KPI + Grafikler + Tablo)
 # ══════════════════════════════════════════════════════════
 def gecmis_analiz_sayfasi(T=None):
+    # Ağır kütüphaneler yalnızca bu sayfa açıldığında import edilir (login'i yavaşlatmaz)
+    import pandas as pd
+    import plotly.express as px
+
     if T is None:
         T = LANGS[st.session_state.lang]
 
