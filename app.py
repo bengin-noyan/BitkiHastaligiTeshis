@@ -923,6 +923,29 @@ CLASS_TR = {
 }
 
 
+def sinif_ismi_ceviri(name: str) -> str:
+    """Modelin İngilizce sınıf ismini ('apple_scab') CLASS_TR ile Türkçeye çevirir
+    ('Elma Karaleke'). Eşleşmeyen kelimeler baş harfi büyük olarak korunur."""
+    return " ".join(CLASS_TR.get(w.lower(), w.capitalize())
+                    for w in name.replace("_", " ").split())
+
+
+def analiz_gorseli_ciz(lang: str):
+    """session_state'teki ham tespit sonucunu (result) o anki dile göre kutucuklu
+    görsele çevirir. Türkçe seçiliyse etiketler Türkçe, İngilizce seçiliyse orijinal
+    İngilizce çizilir. Model yeniden ÇALIŞTIRILMAZ; yalnızca plot() yeniden çizilir —
+    böylece dil değişince tekrar analiz (ve tekrar DB kaydı) gerekmez."""
+    res_obj = st.session_state.get("result")
+    isimler = st.session_state.get("model_names", {})
+    if res_obj is None:
+        return None
+    if lang == "Türkçe":
+        res_obj.names = {k: sinif_ismi_ceviri(v) for k, v in isimler.items()}
+    else:
+        res_obj.names = dict(isimler)
+    return res_obj.plot()[:, :, ::-1]
+
+
 # ══════════════════════════════════════════════════════════
 #  GİRİŞ SAYFASI — Minimalist tasarım
 # ══════════════════════════════════════════════════════════
@@ -1654,9 +1677,12 @@ def ana_analiz_sayfasi(T, lang):
             st.subheader(T['col1_sub'])
             img = Image.open(uploaded)
             image_slot = st.empty()
-            if st.session_state.get("analiz_ok"):
-                image_slot.image(st.session_state.plot, caption=T["img_cap_res"], use_container_width=True)
+            sonuc_gorsel = analiz_gorseli_ciz(lang) if st.session_state.get("analiz_ok") else None
+            if sonuc_gorsel is not None:
+                image_slot.image(sonuc_gorsel, caption=T["img_cap_res"], use_container_width=True)
             else:
+                # Ham sonuç yoksa (ör. eski oturum state'i) orijinal görseli göster;
+                # çökmemesi sayesinde alttaki eylem planı da render edilmeye devam eder.
                 image_slot.image(img, caption=T["img_cap_orig"], use_container_width=True)
             st.write("")
             run_btn = st.button(T["analyze_btn"], use_container_width=True, type="primary")
@@ -1665,12 +1691,18 @@ def ana_analiz_sayfasi(T, lang):
             with col1, st.spinner(T["spinner"]):
                 model = load_model()
                 res = model.predict(source=img, conf=conf, imgsz=640, verbose=False)
-                st.session_state.plot      = res[0].plot()[:, :, ::-1]
-                st.session_state.classes   = [model.names[int(c)] for c in res[0].boxes.cls]
-                st.session_state.confs     = [float(c) for c in res[0].boxes.conf]
-                st.session_state.analiz_ok = True
+                # Ham tespit sonucunu sakla. Kutucuklu görsel, dil değişince yeniden
+                # analiz gerektirmeden, o anki dile göre analiz_gorseli_ciz ile çizilir.
+                # (Türkçe karakterler için plot() otomatik PIL/Unicode moduna geçer.)
+                # classes ise İngilizce model.names'ten okunur; hastalık anahtar-kelime
+                # eşleşmesi buna bağlı.
+                st.session_state.result      = res[0]
+                st.session_state.model_names = dict(model.names)
+                st.session_state.classes     = [model.names[int(c)] for c in res[0].boxes.cls]
+                st.session_state.confs       = [float(c) for c in res[0].boxes.conf]
+                st.session_state.analiz_ok   = True
                 # Orijinal görselin yerine tespit sonucunu (bounding box'lı) bas
-                image_slot.image(st.session_state.plot, caption=T["img_cap_res"], use_container_width=True)
+                image_slot.image(analiz_gorseli_ciz(lang), caption=T["img_cap_res"], use_container_width=True)
                 
                 # ─── YENİ EKLENEN: SQL KAYIT İŞLEMİ ───
                 try:
@@ -1716,10 +1748,12 @@ def ana_analiz_sayfasi(T, lang):
                 det_cls  = st.session_state.classes
                 det_conf = st.session_state.confs
 
-                plants = set([cn.split()[0] for cn in det_cls])
+                # Sınıf isimleri alt çizgiyle ayrılır (örn: grape_black_measles);
+                # ilk kelimeyi (bitki türü) almak için önce '_' -> ' ' çevir.
+                plants = set([cn.replace('_', ' ').split()[0] for cn in det_cls])
                 plant_str = ""
                 if plants:
-                    plant_str = ", ".join(CLASS_TR.get(p.lower(), p) for p in plants) if lang == "Türkçe" else ", ".join(plants)
+                    plant_str = ", ".join(CLASS_TR.get(p.lower(), p.capitalize()) for p in plants) if lang == "Türkçe" else ", ".join(p.capitalize() for p in plants)
                     st.info(f"{T['plant_label']}: **{plant_str}**")
 
                 if not det_cls:
