@@ -532,6 +532,10 @@ def llm_ile_oneri_getir(hastalik_ismi, bitki, lang_key):
             f"sonuc (tedavi edilmezse muhtemel sonuç), "
             f"ekonomi (verim/ekonomik etki ve kısa tavsiye), "
             f"verim_kaybi_aralik (tedavi edilmezse tahmini verim kaybı yüzde aralığı; "
+            f"bu aralığı GENEL bir varsayılan değil, TAM OLARAK bu hastalığın bilinen "
+            f"zirai şiddetine göre belirle: hafif yaprak lekeleri düşük (ör. %10-20), "
+            f"yanıklık/mildiyö/küf orta (ör. %30-45), virüs ve sistemik hastalıklar "
+            f"yüksek (ör. %50-70) seyreder — hastalıktan hastalığa DEĞİŞMELİDİR; "
             f"aralığı DAR ve gerçekçi tut — alt ve üst sınır farkı en fazla 15 puan olsun, "
             f"örn '%25-35' gibi), "
             f"verim_kaybi_seviye (yalnızca şu üç değerden biri: {seviyeler}), "
@@ -560,11 +564,11 @@ def llm_ile_oneri_getir(hastalik_ismi, bitki, lang_key):
                 "response_mime_type": "application/json",
                 "response_schema": schema,
                 "temperature": 0.3,
-                # Modelin "düşünme" (reasoning) aşamasını kapat: bu görev
-                # yapılandırılmış kısa bir JSON ürettiği için düşünmeye gerek yok.
-                # Düşünme bütçesini 0'a çekmek yanıt süresini birkaç saniye kısaltır
-                # (prompt ve çıktı aynı kalır, yalnızca gecikme düşer).
-                "thinking_config": {"thinking_budget": 0},
+                # Küçük bir "düşünme" (reasoning) bütçesi ver: model, verim kaybı
+                # aralığını hastalığa özel muhakeme ederek belirlesin. Bütçe 0 iken
+                # hastalıktan bağımsız sabit bir aralığa (ör. %40-55) kilitleniyordu.
+                # 512 token, hastalığa göre farklılaşma sağlar ama gecikmeyi az artırır.
+                "thinking_config": {"thinking_budget": 512},
             },
         )
 
