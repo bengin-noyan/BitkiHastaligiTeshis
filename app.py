@@ -673,7 +673,7 @@ LANGS = {
         "sec3_title":         "Neden Bu Platform?",
         "sec3_lede":          "Sadece bir teşhis aracı değil; aynı zamanda kişisel bir tarımsal veri yönetim sistemi.",
         "feat1_t":            "Çoklu Bitki Desteği",
-        "feat1_d":            "Domates, elma, üzüm, mısır ve daha pek çok ürün için 14 bitki türü, 38 toplam analiz kapasitesi.",
+        "feat1_d":            "Domates, elma, üzüm, mısır ve daha pek çok ürün için 13 bitki türü, 29 toplam analiz kapasitesi.",
         "feat2_t":            "Anlık Sonuç",
         "feat2_d":            "Ortalama 1 saniyenin altında analiz süresi. Tarladayken bile pratik karar desteği.",
         "feat3_t":            "Akıllı Dashboard",
@@ -840,7 +840,7 @@ LANGS = {
         "sec3_title":         "Why This Platform?",
         "sec3_lede":          "Not just a diagnostic tool; it is also a personal agricultural data management system.",
         "feat1_t":            "Multi-Plant Support",
-        "feat1_d":            "14 plant species and 38 disease classes for tomato, apple, grape, corn and many other crops.",
+        "feat1_d":            "13 plant species and 29 disease classes for tomato, apple, grape, corn and many other crops.",
         "feat2_t":            "Instant Results",
         "feat2_d":            "Average analysis time under 1 second. Practical decision support even while in the field.",
         "feat3_t":            "Smart Dashboard",
@@ -1235,7 +1235,7 @@ def login_page():
         <div class="lp-stats">
             <span class="lp-pill"><b>%94+</b> {T["pill_accuracy"]}</span>
             <span class="lp-pill"><b>&lt;1sn</b> {T["pill_analysis"]}</span>
-            <span class="lp-pill"><b>38</b> {T["pill_classes"]}</span>
+            <span class="lp-pill"><b>29</b> {T["pill_classes"]}</span>
         </div>
         <div class="lp-footer-note">
             {T["footer_scroll"]}
