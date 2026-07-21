@@ -2,6 +2,7 @@ import os
 import threading
 import sqlite3
 from datetime import datetime
+from typing import Any
 import streamlit as st
 from PIL import Image
 # Ağır kütüphaneler (pandas, plotly, firebase) modül açılışında değil,
@@ -471,7 +472,7 @@ if "lang" not in st.session_state:
 def load_model():
     os.environ["YOLO_VERBOSE"] = "False"  # Ultralytics banner/log çıktısını kapat
     from ultralytics import YOLO
-    m = YOLO("plantdoc_150epoch.pt")
+    m = YOLO("plantdoc_150epoch.pt")  # modelin yüklenmesi biraz zaman alır, bu yüzden cache'liyoruz
     # İlk gerçek analizdeki gecikmeyi önlemek için modeli boş bir görselle önceden ısıt
     try:
         m.predict(source=Image.new("RGB", (640, 640)), imgsz=640, verbose=False)
@@ -499,7 +500,7 @@ def modeli_onyukle_arkaplan():
 @st.cache_data(ttl=3600, show_spinner=False)
 def hastalik_bilgisi_getir(db_key, lang_key):
     try:
-        doc = get_db().collection("hastaliklar").document(db_key).get()
+        doc: Any = get_db().collection("hastaliklar").document(db_key).get()
         if doc.exists:
             doc_data = doc.to_dict()
             if doc_data and isinstance(doc_data, dict):
@@ -568,6 +569,8 @@ def llm_ile_oneri_getir(hastalik_ismi, bitki, lang_key):
         )
 
         import json
+        if resp.text is None:
+            return None  # boş yanıt → çağıran taraf Firestore fallback'ine düşer
         return json.loads(resp.text)
     except Exception as e:
         print(f"Gemini öneri hatası: {e}")
@@ -919,15 +922,24 @@ CLASS_TR = {
     "scab":"Karaleke","rust":"Pas","virus":"Virüs","blight":"Yanıklık",
     "spot":"Lekesi","spots":"Lekeleri","mold":"Küf","mildew":"Külleme",
     "rot":"Çürüklük","early":"Erken","late":"Geç","black":"Siyah",
-    "bacterial":"Bakteriyel","mosaic":"Mozaik"
+    "bacterial":"Bakteriyel","mosaic":"Mozaik","yellow":"Sarı",
+    "blueberry":"Yaban Mersini","gray":"Gri","soyabean":"Soya Fasulyesi",
+    "septoria":"Septoria","two":"İki","spotted":"Noktalı","spider":"Örümcek",
+    "mites":"Akarı","powdery":""  # 'powdery mildew' -> yalnızca 'Külleme' (mildew) yazılır
 }
 
 
 def sinif_ismi_ceviri(name: str) -> str:
-    """Modelin İngilizce sınıf ismini ('apple_scab') CLASS_TR ile Türkçeye çevirir
-    ('Elma Karaleke'). Eşleşmeyen kelimeler baş harfi büyük olarak korunur."""
-    return " ".join(CLASS_TR.get(w.lower(), w.capitalize())
-                    for w in name.replace("_", " ").split())
+    """Modelin İngilizce sınıf ismini ('Tomato leaf yellow virus') CLASS_TR ile
+    Türkçeye çevirir ('Domates Yaprağı Sarı Virüs'). Kelimeler boşlukla ayrılır;
+    'Bell_pepper' gibi alt çizgili terimler tek parça olarak sözlükte aranır.
+    Eşleşmeyen kelimeler baş harfi büyük tutulur, boş çeviriler (ör. 'powdery') atlanır."""
+    parcalar = []
+    for token in name.split():
+        tr = CLASS_TR.get(token.lower(), token.capitalize())
+        if tr:  # boş string dönen kelimeleri (powdery) atla
+            parcalar.append(tr)
+    return " ".join(parcalar)
 
 
 def analiz_gorseli_ciz(lang: str):
@@ -1696,13 +1708,17 @@ def ana_analiz_sayfasi(T, lang):
                 # (Türkçe karakterler için plot() otomatik PIL/Unicode moduna geçer.)
                 # classes ise İngilizce model.names'ten okunur; hastalık anahtar-kelime
                 # eşleşmesi buna bağlı.
-                st.session_state.result      = res[0]
+                r0 = res[0]
+                boxes = r0.boxes
+                st.session_state.result      = r0
                 st.session_state.model_names = dict(model.names)
-                st.session_state.classes     = [model.names[int(c)] for c in res[0].boxes.cls]
-                st.session_state.confs       = [float(c) for c in res[0].boxes.conf]
+                st.session_state.classes     = [model.names[int(c)] for c in boxes.cls] if boxes is not None else []
+                st.session_state.confs       = [float(c) for c in boxes.conf] if boxes is not None else []
                 st.session_state.analiz_ok   = True
                 # Orijinal görselin yerine tespit sonucunu (bounding box'lı) bas
-                image_slot.image(analiz_gorseli_ciz(lang), caption=T["img_cap_res"], use_container_width=True)
+                _analiz_gorseli = analiz_gorseli_ciz(lang)
+                if _analiz_gorseli is not None:
+                    image_slot.image(_analiz_gorseli, caption=T["img_cap_res"], use_container_width=True)
                 
                 # ─── YENİ EKLENEN: SQL KAYIT İŞLEMİ ───
                 try:
@@ -1711,12 +1727,12 @@ def ana_analiz_sayfasi(T, lang):
                     
                     plants = set()
                     for cn in det_cls:
-                        # grape_black_measles gibi isimleri böl ve ilk kelimesini (grape) al
-                        ilk_kelime = cn.replace('_', ' ').split()[0].lower()
+                        # Boşlukla ayır; ilk parça bitki türüdür ('Bell_pepper' tek parça kalır)
+                        ilk_kelime = cn.split()[0].lower()
                         plants.add(ilk_kelime)
 
                     if plants:
-                        bitki_turu = ", ".join(CLASS_TR.get(p, p.capitalize()) for p in plants) if lang == "Türkçe" else ", ".join(p.capitalize() for p in plants)
+                        bitki_turu = ", ".join(str(CLASS_TR.get(p, p.replace('_', ' ').capitalize())) for p in plants) if lang == "Türkçe" else ", ".join(str(p).replace('_', ' ').capitalize() for p in plants)
                     else:
                         bitki_turu = "Bilinmiyor"
 
@@ -1729,7 +1745,7 @@ def ana_analiz_sayfasi(T, lang):
                         hastalik = "Sağlıklı"
                     else:
                         if lang == "Türkçe":
-                            hastalik = ", ".join(set([" ".join(CLASS_TR.get(w.lower(), w.capitalize()) for w in dis.replace("_", " ").split()) for dis in sick]))
+                            hastalik = ", ".join(set(sinif_ismi_ceviri(dis) for dis in sick))
                         else:
                             hastalik = ", ".join(set(sick))
 
@@ -1748,12 +1764,12 @@ def ana_analiz_sayfasi(T, lang):
                 det_cls  = st.session_state.classes
                 det_conf = st.session_state.confs
 
-                # Sınıf isimleri alt çizgiyle ayrılır (örn: grape_black_measles);
-                # ilk kelimeyi (bitki türü) almak için önce '_' -> ' ' çevir.
-                plants = set([cn.replace('_', ' ').split()[0] for cn in det_cls])
+                # Sınıf isimleri boşlukla ayrılır; ilk parça bitki türüdür
+                # ('Bell_pepper' gibi alt çizgili terimler tek parça olarak aranır).
+                plants = set([cn.split()[0] for cn in det_cls])
                 plant_str = ""
                 if plants:
-                    plant_str = ", ".join(CLASS_TR.get(p.lower(), p.capitalize()) for p in plants) if lang == "Türkçe" else ", ".join(p.capitalize() for p in plants)
+                    plant_str = ", ".join(CLASS_TR.get(p.lower(), p.replace('_', ' ').capitalize()) for p in plants) if lang == "Türkçe" else ", ".join(p.replace('_', ' ').capitalize() for p in plants)
                     st.info(f"{T['plant_label']}: **{plant_str}**")
 
                 if not det_cls:
@@ -1807,7 +1823,7 @@ def ana_analiz_sayfasi(T, lang):
 
                         for dis in set(sick):
                             h = dis.lower()
-                            display = " ".join(CLASS_TR.get(w.lower(), w.capitalize()) for w in dis.replace("_", " ").split()) if lang == "Türkçe" else dis
+                            display = sinif_ismi_ceviri(dis) if lang == "Türkçe" else dis
 
                             # Bulunan hastalığın İngilizce anahtar kelimesini belirle
                             db_key = "default"
@@ -2135,7 +2151,7 @@ def gecmis_analiz_sayfasi(T=None):
         df = pd.read_sql_query(
             "SELECT * FROM analiz_gecmisi WHERE kullanici_adi = ?",
             conn_dash,
-            params=(aktif_kullanici,),
+            params=[aktif_kullanici],
         )
         conn_dash.close()
     except Exception as e:
