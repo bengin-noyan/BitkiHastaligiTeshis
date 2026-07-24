@@ -106,14 +106,28 @@ st.markdown("""
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header[data-testid="stHeader"] { background: transparent !important; height: 0 !important; }
+/* Sağ üstteki "Deploy" butonu gizlenir (login + ana uygulama). Araç çubuğunun
+   tamamını GİZLEME — sidebar aç/kapat düğmesi o bölgede yaşıyor. */
+[data-testid="stAppDeployButton"] { display: none !important; }
+[data-testid="stDecoration"] { display: none !important; }
+/* Sidebar aç/kapat (collapse/expand) kontrolleri HER ZAMAN görünür kalsın */
+[data-testid="stSidebarHeader"],
+[data-testid="stSidebarCollapseButton"],
+[data-testid="stExpandSidebarButton"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 1000000 !important;
+}
 
 /* ===== KÖK DEĞİŞKENLER — Sade tek renk paleti ===== */
 :root {
-    --primary:        #7DA78C;
-    --primary-dark:   #6A937A;
-    --primary-soft:   #f0f5f2;
-    --primary-border: #c5dccd;
-    --primary-text:   #4a6e57;
+    /* Canlı/parlak yeşil palet — eski sage (#7DA78C) yerine daha doygun yeşil */
+    --primary:        #2FA85A;
+    --primary-dark:   #248C49;
+    --primary-soft:   #e7f7ee;
+    --primary-border: #a6e2be;
+    --primary-text:   #1e7d42;
     
     --amber:          #d97706;
     --amber-soft:     #fffbeb;
@@ -391,6 +405,11 @@ section[data-testid="stSidebar"] .stButton > button:hover { background: var(--re
 
 .stApp img { border-radius: 12px !important; border: 1px solid var(--border) !important; box-shadow: 0 1px 3px rgba(15,23,42,0.04) !important; transition: all 0.25s ease !important; }
 .stApp img:hover { box-shadow: 0 6px 18px rgba(125,167,140,0.08) !important; }
+/* Logo görselleri bu kuralın dışında — etraflarında kutu/kenarlık/gölge OLMASIN */
+.stApp img.lp-logo,
+section[data-testid="stSidebar"] img { border: none !important; border-radius: 0 !important; box-shadow: none !important; }
+.stApp img.lp-logo:hover,
+section[data-testid="stSidebar"] img:hover { box-shadow: none !important; }
 
 .stTextInput { width: 100% !important; }
 
@@ -698,7 +717,7 @@ LANGS = {
         "feat3_d":            "Geçmiş analizlerin KPI metrikleri, dağılım grafikleri ve detaylı tablolarla görselleştirilir.",
         "feat4_t":            "Veri İzolasyonu",
         "feat4_d":            "Her kullanıcı yalnızca kendi kayıtlarına erişebilir. Verilerin güvenli, gizli ve yönetilebilirdir.",
-        "copyright":          "© 2026 Tarımsal Analiz Sistemi · Tüm hakları saklıdır",
+        "copyright":          "© 2026 PlantDetective · Tüm hakları saklıdır",
         # Sidebar / main app shell
         "logo_text":          "Tarımsal Analiz",
         "logo_sub":           "AI DESTEKLİ SİSTEM",
@@ -865,7 +884,7 @@ LANGS = {
         "feat3_d":            "Your past analyses are visualized with KPI metrics, distribution charts and detailed tables.",
         "feat4_t":            "Data Isolation",
         "feat4_d":            "Each user can only access their own records. Your data is secure, private and manageable.",
-        "copyright":          "© 2026 Agricultural Analysis System · All rights reserved",
+        "copyright":          "© 2026 PlantDetective · All rights reserved",
         # Sidebar / main app shell
         "logo_text":          "Agri Analysis",
         "logo_sub":           "AI POWERED SYSTEM",
@@ -990,6 +1009,24 @@ def analiz_gorseli_ciz(lang: str):
 #  GİRİŞ SAYFASI — Minimalist tasarım
 # ══════════════════════════════════════════════════════════
 def login_page():
+    # ─── GİRİŞ EKRANI ARKA PLANI (tarımsal drone görseli) ───
+    # Görselin üzerine hafif beyaz bir katman (overlay) koyarak kartların ve
+    # yazıların okunaklığını korurken projenin ruhuna uygun bir doku sağlarız.
+    _bg = asset_data_uri("login_bg.jpg")
+    if _bg:
+        st.markdown(f"""
+        <style>
+        .stApp {{
+            background:
+                linear-gradient(180deg, rgba(248,250,252,0.12) 0%, rgba(248,250,252,0.10) 45%, rgba(248,250,252,0.22) 78%, rgba(250,250,250,0.40) 100%),
+                url("{_bg}") center top / cover no-repeat fixed !important;
+        }}
+        /* Ana uygulamadaki köşe ışıltıları (radial-gradient) giriş ekranında
+           kapatılır; arka plan görseli üzerinde parlama/hâle oluşturmasınlar. */
+        .stApp::before {{ background: none !important; }}
+        </style>
+        """, unsafe_allow_html=True)
+
     st.markdown("""
     <style>
     .lp-badge {
@@ -1005,14 +1042,23 @@ def login_page():
     }
     .lp-badge-dot { width: 6px; height: 6px; background: #7DA78C; border-radius: 50%; }
     .lp-card {
-        background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px;
-        padding: 40px 36px 28px 36px; box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+        background: transparent; border: none; box-shadow: none;
+        padding: 8px 0 4px 0;
         animation: cardIn 0.45s cubic-bezier(0.34,1.56,0.64,1); text-align: center; position: relative;
     }
     @keyframes cardIn { from { opacity: 0; transform: translateY(16px); } to   { opacity: 1; transform: translateY(0); } }
     .lp-icon {
         width: 64px; height: 64px; margin: 0 auto 20px auto; background: #ecfdf5; border: 1px solid #a7f3d0;
         border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 30px;
+    }
+    /* Logo — şeffaf zeminli, arka planın üstünde serbest yüzer; drop-shadow ile
+       hem parlar hem de metin/emblem arka plandan ayrışıp öne çıkar (kutu YOK). */
+    .lp-logo {
+        display: block; width: 100%; max-width: 440px; height: auto; margin: 0 auto 6px auto;
+        filter:
+            drop-shadow(0 0 10px rgba(255,255,255,0.95))
+            drop-shadow(0 0 3px rgba(255,255,255,0.95))
+            drop-shadow(0 6px 14px rgba(15,23,42,0.28));
     }
     .lp-title { font-size: 1.55rem; font-weight: 800; color: #0f172a !important; margin: 0 0 8px 0; letter-spacing: -0.03em; }
     .lp-sub { font-size: 0.92rem; color: #64748b !important; margin: 0; font-weight: 400; line-height: 1.55; }
@@ -1022,9 +1068,85 @@ def login_page():
         font-size: 0.74rem; color: #64748b !important; font-weight: 500;
     }
     .lp-pill b { color: #0f172a !important; font-weight: 700; }
-    .lp-footer-note { margin-top: 28px; font-size: 0.76rem; color: #94a3b8 !important; text-align: center; }
-    
+    /* Alt not ve telif satırı da görselin üstünde duruyor; .lp-pill ile aynı
+       hafif beyaz hap görünümüne alınarak okunaklı hale getirilir. */
+    .lp-note-wrap { text-align: center; margin-top: 22px; }
+    .lp-footer-note {
+        display: inline-block;
+        padding: 6px 16px;
+        background: rgba(255,255,255,0.92);
+        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: blur(6px);
+        border: 1px solid #e5e7eb;
+        border-radius: 100px;
+        font-size: 0.76rem;
+        color: #475569 !important;
+        font-weight: 500;
+    }
+
+    /* ─── GİRİŞ FORMU — DÜZ BEYAZ KART (.st-key-login_panel) ───
+       Yalnızca form konteynerine uygulanır; arka plandaki görsel kartın
+       çevresinde/üstünde net görünür, form yazıları beyaz zeminde okunur. */
+    .st-key-login_panel {
+        background: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 20px !important;
+        padding: 24px 30px 20px 30px !important;
+        box-shadow: 0 24px 60px rgba(15,23,42,0.22) !important;
+    }
+    .st-key-login_panel [data-baseweb="tab"] p { font-weight: 600 !important; }
+    /* Etiketler (Kullanıcı Adı / Şifre) koyu ve okunaklı */
+    .st-key-login_panel label p { color: #1e293b !important; font-weight: 600 !important; }
+    /* Giriş alanları — beyaz kartın üzerinde KAYBOLMASIN diye alan belirgin açık-gri
+       zemin + kenarlık alır; yazı KOYU ve KALIN; otomatik-dolu (autofill) durumunda
+       da aynı zemin/yazı korunur (Chrome grisini bastırır). */
+    .st-key-login_panel [data-baseweb="input"] {
+        background: #eef2f7 !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 10px !important;
+    }
+    .st-key-login_panel [data-baseweb="input"]:focus-within {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px rgba(47,168,90,0.15) !important;
+    }
+    .st-key-login_panel input {
+        background: transparent !important;
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a !important;
+        font-weight: 600 !important;
+    }
+    .st-key-login_panel input::placeholder {
+        color: #94a3b8 !important;
+        -webkit-text-fill-color: #94a3b8 !important;
+        font-weight: 400 !important;
+    }
+    .st-key-login_panel input:-webkit-autofill,
+    .st-key-login_panel input:-webkit-autofill:hover,
+    .st-key-login_panel input:-webkit-autofill:focus,
+    .st-key-login_panel input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 1000px #eef2f7 inset !important;
+        -webkit-text-fill-color: #0f172a !important;
+        caret-color: #0f172a !important;
+        transition: background-color 9999s ease-in-out 0s !important;
+    }
+
     /* ─── Landing Page Bölümleri ─── */
+    /* Bölüm başlıkları arka plan görselinin doğrudan üstünde duruyordu ve
+       yaprak dokusunda okunmuyordu. Kartlarla aynı dili konuşan (beyaz zemin,
+       #e5e7eb kenarlık, yuvarlak köşe) hafif buzlu bir panel içine alınır;
+       arka plan görseli panelin çevresinde ve altından görünmeye devam eder. */
+    .ls-head {
+        max-width: 780px;
+        margin: 0 auto 32px auto;
+        padding: 26px 30px 24px 30px;
+        text-align: center;
+        background: rgba(255,255,255,0.90);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(15,23,42,0.10);
+    }
     .ls-section-tag {
         display: inline-block;
         background: #ecfdf5;
@@ -1138,23 +1260,38 @@ def login_page():
     }
     .stRadio [role="radiogroup"] label:hover { background: #f9fafb !important; }
 
-    /* Login page — kill any inner border/divider around the eye button so it sits cleanly inside the password input */
+    /* Login page — şifre alanındaki göz (göster/gizle) düğmesi TERTEMİZ dursun:
+       alanın içindeki tüm iç kenarlık/ayraç/zemin/gölge sıfırlanır, yalnızca
+       en dıştaki [data-baseweb="input"] çerçevesi kalır. Böylece göz ikonunun
+       çevresinde "iç içe geçmiş çizgiler" (ayraç + çerçeve çakışması) oluşmaz. */
     .stTextInput [data-baseweb="input"] > div,
+    .stTextInput [data-baseweb="base-input"],
     .stTextInput [data-testid="stTextInputRootElement"] > div {
         border: none !important;
-        border-left: none !important;
-        border-right: none !important;
         background: transparent !important;
         box-shadow: none !important;
         outline: none !important;
     }
-    .stTextInput button,
-    .stTextInput button:focus,
-    .stTextInput button:focus-visible,
-    .stTextInput button:active {
+    .stTextInput [data-baseweb="input"] button {
+        border: none !important;
+        border-left: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 6px !important;
+        margin: 0 !important;
+    }
+    .stTextInput [data-baseweb="input"] button:hover {
+        background: transparent !important;
+        color: var(--primary) !important;
+    }
+    .stTextInput [data-baseweb="input"] button:focus,
+    .stTextInput [data-baseweb="input"] button:focus-visible,
+    .stTextInput [data-baseweb="input"] button:active {
         border: none !important;
         outline: none !important;
         box-shadow: none !important;
+        background: transparent !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1180,85 +1317,95 @@ def login_page():
     </style>
     """, unsafe_allow_html=True)
 
+    # ─── LOGO + GİRİŞ FORMU ───
     _, col, _ = st.columns([1, 1.5, 1])
     with col:
+        # LOGO — arka planın üzerinde serbest yüzer; ÇEVRESİNDE KUTU YOK.
+        _logo = asset_data_uri("logo_transparent.png")
+        _logo_html = (
+            f'<img class="lp-logo" src="{_logo}" alt="PlantDetective" />'
+            if _logo else '<div class="lp-icon">🌿</div>'
+        )
         st.markdown(f"""
         <div class="lp-card">
-            <div class="lp-icon">🌿</div>
-            <div class="lp-title">{T["main_title"]}</div>
-            <div class="lp-sub">{T["lp_subtitle"]}</div>
+            {_logo_html}
         </div>
         """, unsafe_allow_html=True)
 
-        # ─── SEKMELER (TABS) BAŞLANGICI ───
-        tab_giris, tab_kayit = st.tabs([T["tab_login"], T["tab_register"]])
+        # FORM — okunabilirlik için buzlu cam (frosted) panel. Stil yalnızca bu
+        # konteynerin .st-key-login_panel sınıfına uygulanır; logoya sıçramaz.
+        with st.container(key="login_panel"):
+            # ─── SEKMELER (TABS) BAŞLANGICI ───
+            tab_giris, tab_kayit = st.tabs([T["tab_login"], T["tab_register"]])
 
-        # 1. GİRİŞ SEKME İÇERİĞİ
-        with tab_giris:
-            with st.form("login_form", clear_on_submit=False, border=False):
-                username = st.text_input(T["username"], placeholder=T["username_ph"], key="login_user")
-                password = st.text_input(T["password"], type="password", placeholder=T["password_ph"], key="login_pass")
-                st.write("")
-                giris_yap = st.form_submit_button(T["btn_login"], use_container_width=True, type="primary")
-                st.markdown(f"<div style='text-align:right;font-size:0.72rem;color:#94a3b8;margin-top:6px;'>{T['form_enter_hint']}</div>", unsafe_allow_html=True)
+            # 1. GİRİŞ SEKME İÇERİĞİ
+            with tab_giris:
+                with st.form("login_form", clear_on_submit=False, border=False):
+                    username = st.text_input(T["username"], placeholder=T["username_ph"], key="login_user")
+                    password = st.text_input(T["password"], type="password", placeholder=T["password_ph"], key="login_pass")
+                    st.write("")
+                    giris_yap = st.form_submit_button(T["btn_login"], use_container_width=True, type="primary")
+                    st.markdown(f"<div style='text-align:right;font-size:0.72rem;color:#64748b;margin-top:6px;'>{T['form_enter_hint']}</div>", unsafe_allow_html=True)
 
-            if giris_yap:
-                kullanici_adi_girilen = username.strip().lower()
-                sifre_girilen = password.strip()
+                if giris_yap:
+                    kullanici_adi_girilen = username.strip().lower()
+                    sifre_girilen = password.strip()
 
-                conn = sqlite3.connect('tarimsal_analiz.db', check_same_thread=False)
-                c = conn.cursor()
-                c.execute("SELECT * FROM kullanicilar WHERE kullanici_adi=? AND sifre=?", (kullanici_adi_girilen, sifre_girilen))
-                kullanici_var_mi = c.fetchone()
-                conn.close()
+                    conn = sqlite3.connect('tarimsal_analiz.db', check_same_thread=False)
+                    c = conn.cursor()
+                    c.execute("SELECT * FROM kullanicilar WHERE kullanici_adi=? AND sifre=?", (kullanici_adi_girilen, sifre_girilen))
+                    kullanici_var_mi = c.fetchone()
+                    conn.close()
 
-                if kullanici_var_mi:
-                    st.session_state.logged_in = True
-                    st.session_state.aktif_kullanici = kullanici_adi_girilen
-                    st.rerun()
-                else:
-                    st.error(T["err_invalid"])
+                    if kullanici_var_mi:
+                        st.session_state.logged_in = True
+                        st.session_state.aktif_kullanici = kullanici_adi_girilen
+                        st.rerun()
+                    else:
+                        st.error(T["err_invalid"])
 
-        # 2. KAYIT SEKME İÇERİĞİ
-        with tab_kayit:
-            with st.form("register_form", clear_on_submit=False, border=False):
-                new_user = st.text_input(T["new_username"], placeholder=T["new_username_ph"], key="reg_user")
-                new_pass = st.text_input(T["new_password"], type="password", placeholder=T["new_password_ph"], key="reg_pass")
-                new_pass2 = st.text_input(T["confirm_password"], type="password", placeholder=T["confirm_password_ph"], key="reg_pass2")
-                st.write("")
-                kayit_ol = st.form_submit_button(T["btn_register"], use_container_width=True, type="primary")
-                st.markdown(f"<div style='text-align:right;font-size:0.72rem;color:#94a3b8;margin-top:6px;'>{T['form_enter_hint_register']}</div>", unsafe_allow_html=True)
+            # 2. KAYIT SEKME İÇERİĞİ
+            with tab_kayit:
+                with st.form("register_form", clear_on_submit=False, border=False):
+                    new_user = st.text_input(T["new_username"], placeholder=T["new_username_ph"], key="reg_user")
+                    new_pass = st.text_input(T["new_password"], type="password", placeholder=T["new_password_ph"], key="reg_pass")
+                    new_pass2 = st.text_input(T["confirm_password"], type="password", placeholder=T["confirm_password_ph"], key="reg_pass2")
+                    st.write("")
+                    kayit_ol = st.form_submit_button(T["btn_register"], use_container_width=True, type="primary")
+                    st.markdown(f"<div style='text-align:right;font-size:0.72rem;color:#64748b;margin-top:6px;'>{T['form_enter_hint_register']}</div>", unsafe_allow_html=True)
 
-            if kayit_ol:
-                if not new_user or not new_pass:
-                    st.warning(T["warn_fill_all"])
-                elif new_pass != new_pass2:
-                    st.error(T["err_mismatch"])
-                else:
-                    try:
-                        conn = sqlite3.connect('tarimsal_analiz.db', check_same_thread=False)
-                        c = conn.cursor()
-                        su_an = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                if kayit_ol:
+                    if not new_user or not new_pass:
+                        st.warning(T["warn_fill_all"])
+                    elif new_pass != new_pass2:
+                        st.error(T["err_mismatch"])
+                    else:
+                        try:
+                            conn = sqlite3.connect('tarimsal_analiz.db', check_same_thread=False)
+                            c = conn.cursor()
+                            su_an = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                        c.execute("INSERT INTO kullanicilar (kullanici_adi, sifre, kayit_tarihi) VALUES (?, ?, ?)",
-                                  (new_user.strip().lower(), new_pass.strip(), su_an))
-                        conn.commit()
-                        conn.close()
-                        st.success(T["success_reg"].format(new_user))
-                    except sqlite3.IntegrityError:
-                        st.error(T["err_user_taken"])
+                            c.execute("INSERT INTO kullanicilar (kullanici_adi, sifre, kayit_tarihi) VALUES (?, ?, ?)",
+                                      (new_user.strip().lower(), new_pass.strip(), su_an))
+                            conn.commit()
+                            conn.close()
+                            st.success(T["success_reg"].format(new_user))
+                        except sqlite3.IntegrityError:
+                            st.error(T["err_user_taken"])
 
-        # ─── ALT İSTATİSTİKLER ───
-        st.markdown(f"""
-        <div class="lp-stats">
-            <span class="lp-pill"><b>%94+</b> {T["pill_accuracy"]}</span>
-            <span class="lp-pill"><b>&lt;1sn</b> {T["pill_analysis"]}</span>
-            <span class="lp-pill"><b>29</b> {T["pill_classes"]}</span>
-        </div>
-        <div class="lp-footer-note">
-            {T["footer_scroll"]}
-        </div>
-        """, unsafe_allow_html=True)
+            # ─── ALT İSTATİSTİKLER ───
+            st.markdown(f"""
+            <div class="lp-stats">
+                <span class="lp-pill"><b>%94+</b> {T["pill_accuracy"]}</span>
+                <span class="lp-pill"><b>&lt;1sn</b> {T["pill_analysis"]}</span>
+                <span class="lp-pill"><b>29</b> {T["pill_classes"]}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # Sayfa akışını bildiren alt not — panel dışında, tam ortalı.
+    st.markdown(f"""
+    <div class="lp-note-wrap"><span class="lp-footer-note">{T["footer_scroll"]}</span></div>
+    """, unsafe_allow_html=True)
 
     # ══════════════════════════════════════════════════════
     #  LANDING PAGE — Tam Genişlikte Vitrin Bölümleri
@@ -1272,7 +1419,7 @@ def login_page():
     #  BÖLÜM 1 — PROJEMİZ HAKKINDA
     # ─────────────────────────────────────────────────────
     st.markdown(f"""
-    <div style="text-align:center;margin-bottom:32px;">
+    <div class="ls-head">
         <span class="ls-section-tag">{T["sec1_tag"]}</span>
         <h2 class="ls-section-title">{T["sec1_title"]}</h2>
         <p class="ls-section-lede" style="margin:0 auto;">
@@ -1309,7 +1456,7 @@ def login_page():
     #  BÖLÜM 2 — NASIL ÇALIŞIR?
     # ─────────────────────────────────────────────────────
     st.markdown(f"""
-    <div style="text-align:center;margin-bottom:32px;">
+    <div class="ls-head">
         <span class="ls-section-tag">{T["sec2_tag"]}</span>
         <h2 class="ls-section-title">{T["sec2_title"]}</h2>
         <p class="ls-section-lede" style="margin:0 auto;">
@@ -1358,7 +1505,7 @@ def login_page():
     #  BÖLÜM 3 — SİSTEM ÖZELLİKLERİ
     # ─────────────────────────────────────────────────────
     st.markdown(f"""
-    <div style="text-align:center;margin-bottom:32px;">
+    <div class="ls-head">
         <span class="ls-section-tag">{T["sec3_tag"]}</span>
         <h2 class="ls-section-title">{T["sec3_title"]}</h2>
         <p class="ls-section-lede" style="margin:0 auto;">
@@ -1412,10 +1559,8 @@ def login_page():
     st.write("")
     st.divider()
     st.markdown(f"""
-    <div style="text-align:center;padding:20px 0 10px 0;">
-        <p style="color:#94a3b8 !important;font-size:0.78rem;font-weight:500;margin:0;">
-            {T["copyright"]}
-        </p>
+    <div class="lp-note-wrap" style="padding:20px 0 10px 0;margin-top:0;">
+        <span class="lp-footer-note">{T["copyright"]}</span>
     </div>
     """, unsafe_allow_html=True)
 

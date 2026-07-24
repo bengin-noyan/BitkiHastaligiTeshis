@@ -1,0 +1,4 @@
+[theme]
+# Streamlit widget aksan rengi (radio noktası, sekme çizgisi, slider, focus)
+# varsayılan kırmızı yerine projenin canlı yeşili olsun.
+primaryColor = "#2FA85A"
