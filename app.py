@@ -1,4 +1,5 @@
 import os
+import base64
 import threading
 import sqlite3
 from datetime import datetime
@@ -8,6 +9,23 @@ from PIL import Image
 # Ağır kütüphaneler (pandas, plotly, firebase) modül açılışında değil,
 # yalnızca gerçekten gerektiğinde (analiz/geçmiş sayfalarında) import edilir —
 # böylece login ekranı çok daha hızlı açılır.
+
+# ─── GÖRSEL VARLIKLAR (logo / arka plan) ────────────────────
+# assets/ klasöründeki görselleri base64 data-URI olarak, önbellekli döndürür;
+# böylece HTML/CSS içine gömülebilir ve her rerun'da diskten okunmaz.
+_ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+
+@st.cache_data(show_spinner=False)
+def asset_data_uri(dosya_adi: str) -> str:
+    yol = os.path.join(_ASSETS_DIR, dosya_adi)
+    try:
+        with open(yol, "rb") as f:
+            veri = base64.b64encode(f.read()).decode("ascii")
+        uzanti = os.path.splitext(dosya_adi)[1].lower().lstrip(".")
+        mime = "jpeg" if uzanti in ("jpg", "jpeg") else uzanti
+        return f"data:image/{mime};base64,{veri}"
+    except Exception:
+        return ""
 
 # ─── SQL VERİTABANI BAĞLANTISI VE KURULUMU ──────────────────
 conn = sqlite3.connect('tarimsal_analiz.db', check_same_thread=False)

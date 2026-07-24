@@ -16,6 +16,8 @@ data/
 datasets/
 Plant-Disease-1/
 *.jpg
+# Arayüz varlıkları hariç tutulur — bunlar uygulamanın parçası
+!assets/*.jpg
 
 # IDE ve Sistem Dosyaları (VS Code / PyCharm)
 .idea/
