@@ -1577,21 +1577,91 @@ def main_app():
     # ══════════════════════════════════════════════════════
     T = LANGS[st.session_state.lang]
 
+    # ── SIDEBAR — KOYU YEŞİL ADMIN-PANEL TEMASI (referans görsele göre) ──
+    # Koyu yeşil zemin, aktif satırda dolu yeşil vurgu, sage-gri bölüm başlıkları;
+    # tıklanabilir satırlar düz/şeffaf (beyaz pill YOK).
+    st.markdown("""
+    <style>
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1c4030 0%, #14301f 55%, #10241b 100%) !important;
+        border-right: 1px solid rgba(255,255,255,0.06) !important;
+    }
+    section[data-testid="stSidebar"] > div { background: transparent !important; }
+    section[data-testid="stSidebar"]::before { background: #34c46a !important; }
+    /* Sidebar genel metin rengi (soluk yeşil-beyaz) */
+    section[data-testid="stSidebar"], section[data-testid="stSidebar"] * { color: #cddbd2 !important; }
+    section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.08) !important; margin: 0.8rem 0 !important; }
+
+    /* Bölüm başlıkları / etiketler — sage-gri (blanket kuralı ezmek için nitelendi) */
+    section[data-testid="stSidebar"] .sb-title { color:#7d9a8a !important; font-size:0.7rem !important; font-weight:700 !important;
+        letter-spacing:0.12em !important; text-transform:uppercase !important; }
+    section[data-testid="stSidebar"] .sb-hint  { color:#7d9a8a !important; font-size:0.74rem !important; font-weight:500 !important; }
+    section[data-testid="stSidebar"] .sb-sub   { color:#8fae9d !important; }
+
+    /* Navigasyon & dil satırları — admin panel satır görünümü (beyaz pill YOK) */
+    section[data-testid="stSidebar"] [role="radiogroup"] { gap: 5px !important; background: transparent !important; }
+    section[data-testid="stSidebar"] [role="radiogroup"] label {
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        border-radius: 10px !important;
+        color: #cddbd2 !important;
+        padding: 10px 14px !important;
+        font-weight: 500 !important;
+        transition: all 0.15s ease !important;
+    }
+    section[data-testid="stSidebar"] [role="radiogroup"] label * { color: #cddbd2 !important; }
+    section[data-testid="stSidebar"] [role="radiogroup"] label:hover {
+        background: rgba(255,255,255,0.06) !important;
+        border-color: rgba(255,255,255,0.08) !important;
+    }
+    section[data-testid="stSidebar"] [role="radiogroup"] label:hover,
+    section[data-testid="stSidebar"] [role="radiogroup"] label:hover * { color: #ffffff !important; }
+    section[data-testid="stSidebar"] [role="radiogroup"] label[data-checked="true"],
+    section[data-testid="stSidebar"] [role="radiogroup"] label[aria-checked="true"] {
+        background: #2e7d50 !important;
+        border-color: #2e7d50 !important;
+        box-shadow: 0 4px 14px rgba(46,125,80,0.35) !important;
+        font-weight: 600 !important;
+    }
+    section[data-testid="stSidebar"] [role="radiogroup"] label[data-checked="true"],
+    section[data-testid="stSidebar"] [role="radiogroup"] label[data-checked="true"] *,
+    section[data-testid="stSidebar"] [role="radiogroup"] label[aria-checked="true"],
+    section[data-testid="stSidebar"] [role="radiogroup"] label[aria-checked="true"] * { color: #ffffff !important; }
+
+    /* Çıkış butonu — koyu zemine uygun, sırıtmayan kırmızı vurgu */
+    section[data-testid="stSidebar"] .stButton > button {
+        background: rgba(239,68,68,0.12) !important;
+        color: #fca5a5 !important;
+        border: 1px solid rgba(239,68,68,0.35) !important;
+    }
+    section[data-testid="stSidebar"] .stButton > button * { color: #fca5a5 !important; }
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        background: rgba(239,68,68,0.22) !important;
+        border-color: rgba(239,68,68,0.60) !important;
+    }
+    section[data-testid="stSidebar"] .stButton > button:hover,
+    section[data-testid="stSidebar"] .stButton > button:hover * { color: #ffffff !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    _sb_logo = asset_data_uri("logo_sidebar.png")
+    _sb_logo_html = (
+        f'<img src="{_sb_logo}" alt="PlantDetective" '
+        f'style="display:block;width:100%;height:auto;" />'
+        if _sb_logo else
+        '<div style="width:52px;height:52px;margin:0 auto;background:#ecfdf5;'
+        'border:1px solid #a7f3d0;border-radius:14px;display:flex;align-items:center;'
+        'justify-content:center;font-size:26px;line-height:1;">🌿</div>'
+    )
+    # Şeffaf logo, TAM GENİŞLİKTE beyaz bir kart içinde ve büyük gösterilir —
+    # referans admin-panelindeki gibi logo karta yakın/dolgun görünür.
     st.sidebar.markdown(f"""
-    <div style="padding:14px 0 18px 0;text-align:center;">
-        <div style="
-            width:52px;height:52px;
-            margin:0 auto 12px auto;
-            background:#ecfdf5;
-            border:1px solid #a7f3d0;
-            border-radius:14px;
-            display:flex;align-items:center;justify-content:center;
-            font-size:26px;line-height:1;
-        ">🌿</div>
-        <div style="color:#0f172a;font-size:0.95rem;font-weight:800;letter-spacing:-0.02em;">
-            {T["logo_text"]}
+    <div style="padding:4px 0 14px 0;text-align:center;">
+        <div style="background:#ffffff;border-radius:14px;padding:16px 18px;
+            box-shadow:0 8px 22px rgba(15,23,42,0.22);margin:0 0 12px 0;">
+            {_sb_logo_html}
         </div>
-        <div style="color:#94a3b8;font-size:0.68rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;margin-top:4px;">
+        <div class="sb-sub" style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;">
             {T["logo_sub"]}
         </div>
     </div>
@@ -1599,11 +1669,8 @@ def main_app():
 
     # ── DİL SEÇİMİ ───────────────────────────────────────
     st.sidebar.markdown(f"""
-    <div style="background:#f9fafb;border:1px solid #e5e7eb;
-        border-radius:8px;padding:8px 14px;margin-bottom:8px;text-align:center;">
-        <span style="color:#475569 !important;font-size:0.78rem;font-weight:600;">
-            {T["lang_label"]}
-        </span>
+    <div style="margin:2px 0 8px 0;">
+        <span class="sb-title">{T["lang_label"]}</span>
     </div>
     """, unsafe_allow_html=True)
     st.sidebar.radio(
@@ -1629,11 +1696,9 @@ def main_app():
     st.sidebar.markdown(f"""
     <div style="margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;">
-            <span style="color:#0f172a;font-size:0.98rem;font-weight:700;letter-spacing:-0.01em;">
-                {T["menu_title"]}
-            </span>
+            <span class="sb-title">{T["menu_title"]}</span>
         </div>
-        <div style="color:#94a3b8;font-size:0.74rem;margin-top:2px;font-weight:500;">
+        <div class="sb-hint" style="margin-top:3px;">
             {T["menu_hint"]}
         </div>
     </div>
@@ -1657,10 +1722,10 @@ def main_app():
 
     st.sidebar.markdown("""
     <div style="text-align:center;margin-top:24px;">
-        <span style="background:#f9fafb;
-            border:1px solid #e5e7eb;border-radius:100px;
+        <span style="background:rgba(255,255,255,0.06);
+            border:1px solid rgba(255,255,255,0.12);border-radius:100px;
             padding:4px 14px;font-size:0.7rem;
-            color:#64748b !important;font-weight:600;letter-spacing:0.04em;">
+            color:#8b98a9 !important;font-weight:600;letter-spacing:0.04em;">
             v2.0
         </span>
     </div>
