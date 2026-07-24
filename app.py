@@ -1046,10 +1046,24 @@ def analiz_gorseli_ciz(lang: str):
     if res_obj is None:
         return None
     if lang == "Türkçe":
-        res_obj.names = {k: sinif_ismi_ceviri(v) for k, v in isimler.items()}
+        adlar = {k: sinif_ismi_ceviri(v) for k, v in isimler.items()}
     else:
-        res_obj.names = dict(isimler)
-    return res_obj.plot()[:, :, ::-1]
+        adlar = dict(isimler)
+    # plot() güven skorunu 0.94 gibi ondalık basar; yüzde (%94) göstermek için
+    # etiketler Annotator ile elle çizilir. example= Türkçe karakter içerdiğinde
+    # Annotator otomatik PIL/Unicode moduna geçer. Import, ultralytics'in tembel
+    # yüklenmesini bozmamak için fonksiyon içinde tutulur.
+    from ultralytics.utils.plotting import Annotator, colors
+    annotator = Annotator(res_obj.orig_img.copy(), example=str(adlar))
+    boxes = res_obj.boxes
+    if boxes is not None:
+        for box in boxes:
+            c = int(box.cls)
+            yuzde = int(round(float(box.conf) * 100))
+            ad = adlar.get(c, str(c))
+            etiket = f"{ad} %{yuzde}" if lang == "Türkçe" else f"{ad} {yuzde}%"
+            annotator.box_label(box.xyxy.squeeze(), etiket, color=colors(c, True))
+    return annotator.result()[:, :, ::-1]
 
 
 # ══════════════════════════════════════════════════════════
@@ -1847,8 +1861,8 @@ def ana_analiz_sayfasi(T, lang):
     c1, c2, c3, c4 = st.columns(4)
     with c1: st.metric(T["kpi_acc"],    "%94",  T["kpi_acc_d"])
     with c2: st.metric(T["kpi_time"],   "<1 sn", T["kpi_time_d"])
-    with c3: st.metric(T["kpi_dis"],    "38",    T["kpi_dis_d"])
-    with c4: st.metric(T["kpi_plants"], "14",    T["kpi_plants_d"])
+    with c3: st.metric(T["kpi_dis"],    "29",    T["kpi_dis_d"])
+    with c4: st.metric(T["kpi_plants"], "13",    T["kpi_plants_d"])
 
     st.write("")
     st.write("")
