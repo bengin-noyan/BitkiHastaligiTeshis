@@ -548,14 +548,10 @@ def hastalik_bilgisi_getir(db_key, lang_key):
 
 # Gemini ile hastalık için gerçek zamanlı öneri üret — teşhis edilen tam hastalık
 # ismini ve bitkiyi modele gönderip yapılandırılmış (JSON) öneri alır.
-# Önbellekli: aynı hastalık için 24 saat tek çağrı yeter (kota/maliyet/hız).
-@st.cache_data(ttl=86400, show_spinner=False)
-def llm_ile_oneri_getir(hastalik_ismi, bitki, lang_key):
+# Saf fonksiyon: st.* kullanmaz, bu sayede arka plan iş parçacığından da
+# güvenle çağrılabilir (prefetch). api_key ana iş parçacığından geçirilir.
+def _gemini_oneri_cek(hastalik_ismi, bitki, lang_key, api_key):
     try:
-        api_key = st.secrets.get("GEMINI_API_KEY", "")
-        if not api_key or api_key.startswith("BURAYA"):
-            return None  # key ayarlı değil → çağıran taraf Firestore'a düşer
-
         from google import genai
         client = genai.Client(api_key=api_key)
 
@@ -616,6 +612,63 @@ def llm_ile_oneri_getir(hastalik_ismi, bitki, lang_key):
     except Exception as e:
         print(f"Gemini öneri hatası: {e}")
         return None  # hata → çağıran taraf Firestore fallback'ine düşer
+
+
+# Önbellekli: aynı hastalık için 24 saat tek çağrı yeter (kota/maliyet/hız).
+@st.cache_data(ttl=86400, show_spinner=False)
+def llm_ile_oneri_getir(hastalik_ismi, bitki, lang_key):
+    api_key = st.secrets.get("GEMINI_API_KEY", "")
+    if not api_key or api_key.startswith("BURAYA"):
+        return None  # key ayarlı değil → çağıran taraf Firestore'a düşer
+    return _gemini_oneri_cek(hastalik_ismi, bitki, lang_key, api_key)
+
+
+@st.cache_resource(show_spinner=False)
+def _oneri_executor():
+    from concurrent.futures import ThreadPoolExecutor
+    ex = ThreadPoolExecutor(max_workers=4)
+    # google.genai import'u ~1 sn sürüyor; ilk Gemini çağrısı bu maliyeti
+    # ödemesin diye executor oluşturulur oluşturulmaz arka planda ısıt.
+    ex.submit(lambda: __import__("google.genai"))
+    return ex
+
+
+def oneri_prefetch_baslat(det_cls, lang):
+    """Tespit biter bitmez hastalık önerilerini arka planda ve PARALEL olarak
+    Gemini'den çekmeye başlar. İstekler kutucuklu görsel çizimi, DB kaydı ve
+    sayfa render'ı ile örtüştüğü için 'Uzman raporu hazırlanıyor' beklemesi
+    belirgin şekilde kısalır; çoklu hastalıkta sıralı çağrı maliyeti kalkar."""
+    api_key = st.secrets.get("GEMINI_API_KEY", "")
+    if not api_key or api_key.startswith("BURAYA") or not det_cls:
+        return
+    dis_keys = ["scab", "rust", "mold", "virus", "spot", "blight", "curl", "rot", "mildew", "scorch"]
+    sick = [c for c in det_cls if any(k in c.lower() for k in dis_keys)]
+    if not sick:
+        return
+    # plant_str, sonuç panelindeki üretimle BİREBİR aynı olmalı (önbellek anahtarı uyumu)
+    lang_key = "TR" if lang == "Türkçe" else "EN"
+    plants = set([cn.split()[0] for cn in det_cls])
+    plant_str = ", ".join(CLASS_TR.get(p.lower(), p.replace('_', ' ').capitalize()) for p in plants) if lang == "Türkçe" else ", ".join(p.replace('_', ' ').capitalize() for p in plants)
+    futures = st.session_state.setdefault("oneri_futures", {})
+    sonuclar = st.session_state.setdefault("oneri_sonuclar", {})
+    ex = _oneri_executor()
+    for dis in set(sick):
+        anahtar = (dis, plant_str, lang_key)
+        if anahtar not in futures and anahtar not in sonuclar:
+            futures[anahtar] = ex.submit(_gemini_oneri_cek, dis, plant_str, lang_key, api_key)
+
+
+def oneri_getir(hastalik_ismi, plant_str, lang_key):
+    """Önce arka plan prefetch sonucuna bakar (varsa bekler ve oturuma işler),
+    sonra oturumdaki hazır sonuçlara; ikisi de yoksa senkron önbellekli çağrıya düşer."""
+    anahtar = (hastalik_ismi, plant_str, lang_key)
+    sonuclar = st.session_state.setdefault("oneri_sonuclar", {})
+    fut = st.session_state.get("oneri_futures", {}).pop(anahtar, None)
+    if fut is not None:
+        sonuclar[anahtar] = fut.result()
+    if anahtar in sonuclar:
+        return sonuclar[anahtar]
+    return llm_ile_oneri_getir(hastalik_ismi, plant_str, lang_key)
 
 # ─── DİL AYARLARI ────────────────────────────────────────────
 LANGS = {
@@ -1913,6 +1966,9 @@ def ana_analiz_sayfasi(T, lang):
         gorsel_kimlik = getattr(uploaded, "file_id", uploaded.name)
         if st.session_state.get("cur_img") != gorsel_kimlik or st.session_state.get("cur_conf") != conf:
             st.session_state.analiz_ok = False
+        # Görsel yüklenir yüklenmez executor'ı (ve google.genai import ısıtmasını)
+        # başlat: kullanıcı "Analizi Başlat"a basana kadar import çoktan biter.
+        _oneri_executor()
         st.session_state.cur_img  = gorsel_kimlik
         st.session_state.cur_conf = conf
 
@@ -1947,6 +2003,9 @@ def ana_analiz_sayfasi(T, lang):
                 st.session_state.classes     = [model.names[int(c)] for c in boxes.cls] if boxes is not None else []
                 st.session_state.confs       = [float(c) for c in boxes.conf] if boxes is not None else []
                 st.session_state.analiz_ok   = True
+                # Uzman raporu isteklerini HEMEN arka planda başlat: görsel çizimi,
+                # DB kaydı ve render ile paralel yürüsün (bekleme süresini kısaltır).
+                oneri_prefetch_baslat(st.session_state.classes, lang)
                 # Orijinal görselin yerine tespit sonucunu (bounding box'lı) bas
                 _analiz_gorseli = analiz_gorseli_ciz(lang)
                 if _analiz_gorseli is not None:
@@ -2030,7 +2089,7 @@ def ana_analiz_sayfasi(T, lang):
                         # için ikinci bir bekleme/spinner oluşmaz.
                         onbellek_oneri = {}
                         with st.spinner(T["spinner_report"]):
-                            vk = llm_ile_oneri_getir(birincil, plant_str, lang_key)
+                            vk = oneri_getir(birincil, plant_str, lang_key)
                         onbellek_oneri[birincil] = vk
 
                         if vk and vk.get("verim_kaybi_seviye"):
@@ -2075,7 +2134,7 @@ def ana_analiz_sayfasi(T, lang):
                                     bilgi = onbellek_oneri[dis]
                                 else:
                                     with st.spinner(T["spinner_advice"]):
-                                        bilgi = llm_ile_oneri_getir(dis, plant_str, lang_key)
+                                        bilgi = oneri_getir(dis, plant_str, lang_key)
 
                                 # 2) Gemini yoksa/başarısızsa mevcut Firestore statik verisine düş
                                 if not bilgi:
