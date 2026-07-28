@@ -6,12 +6,12 @@
 // ─────────────────────────────────────────────────────────────────────
 
 export const COLORS = {
-  // Ana renk (adaçayı yeşili)
-  primary: '#7DA78C',
-  primaryDark: '#6A937A',
-  primarySoft: '#f0f5f2',
-  primaryBorder: '#c5dccd',
-  primaryText: '#4a6e57',
+  // Ana renk — canlı/parlak yeşil (app.py :root --primary ile birebir)
+  primary: '#2FA85A',
+  primaryDark: '#248C49',
+  primarySoft: '#e7f7ee',
+  primaryBorder: '#a6e2be',
+  primaryText: '#1e7d42',
 
   // Başarı / sağlıklı (zümrüt) — app.py'nin ecfdf5 / a7f3d0 / 065f46 üçlüsü
   success: '#065f46',
@@ -42,13 +42,23 @@ export const COLORS = {
   bgCard: '#ffffff',
   border: '#e5e7eb',
   borderSoft: '#f3f4f6',
-  inputBg: '#f8faf8',
+  // Giriş alanları — app.py login formundaki açık-gri zemin + belirgin kenarlık
+  inputBg: '#eef2f7',
+  inputBorder: '#cbd5e1',
+
+  // Koyu yeşil admin-panel tonları (app.py sidebar temasının karşılığı)
+  darkGreen: '#1c4030',
+  darkGreenMid: '#14301f',
+  darkGreenDeep: '#10241b',
+  darkGreenActive: '#2e7d50',
+  darkGreenText: '#cddbd2',
+  darkGreenMuted: '#7d9a8a',
 
   white: '#ffffff',
 } as const;
 
-// app.py'nin yeşil tonlu yumuşak gölgesi: rgba(125,167,140, x)
-export const SHADOW_TINT = '#7DA78C';
+// app.py'nin gölgesi: rgba(15,23,42, x) — slate/lacivert tonlu, yeşil değil
+export const SHADOW_TINT = '#0f172a';
 
 // Inter font ailesi — _layout.tsx içinde yüklenir.
 export const FONTS = {

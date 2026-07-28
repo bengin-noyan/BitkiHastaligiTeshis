@@ -11,6 +11,7 @@ import {
   Inter_900Black,
 } from '@expo-google-fonts/inter';
 import { COLORS } from '../src/constants/theme';
+import { LanguageProvider } from '../src/context/LanguageContext';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -41,8 +42,9 @@ export default function RootLayout() {
   }
 
   return (
-    <>
-      <StatusBar style="dark" backgroundColor={COLORS.primarySoft} />
+    <LanguageProvider>
+      {/* Koyu yeşil başlık / fotoğraflı giriş ekranı üzerinde açık renk ikonlar */}
+      <StatusBar style="light" backgroundColor={COLORS.darkGreen} />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -52,7 +54,8 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="home" />
+        <Stack.Screen name="history" />
       </Stack>
-    </>
+    </LanguageProvider>
   );
 }

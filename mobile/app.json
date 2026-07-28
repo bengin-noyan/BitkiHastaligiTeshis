@@ -9,7 +9,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#f0f5f2",
+      "backgroundColor": "#e7f7ee",
       "resizeMode": "contain"
     },
     "ios": {
@@ -18,7 +18,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#f0f5f2"
+        "backgroundColor": "#e7f7ee"
       },
       "package": "com.pau.bitkihastaligi",
       "permissions": [

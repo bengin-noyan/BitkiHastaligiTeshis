@@ -10,24 +10,32 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
   analyzeImage,
   type AnalysisResult,
+  type Disease,
 } from '../src/services/api';
 import { COLORS, FONTS, SHADOW_TINT, riskColor } from '../src/constants/theme';
+import { DEFAULT_CONFIDENCE } from '../src/constants/config';
+import { format, apiErrorText } from '../src/constants/i18n';
+import { useLanguage } from '../src/context/LanguageContext';
+import AppHeader from '../src/components/AppHeader';
+import BottomNav from '../src/components/BottomNav';
+import ConfidenceSlider from '../src/components/ConfidenceSlider';
 
 export default function HomeScreen() {
-  const router = useRouter();
+  const { lang, T } = useLanguage();
   const params = useLocalSearchParams<{ username?: string }>();
-  const username = params.username || 'Kullanıcı';
+  const username = params.username || (lang === 'tr' ? 'Kullanıcı' : 'User');
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [resultImageBase64, setResultImageBase64] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [confidence, setConfidence] = useState<number>(DEFAULT_CONFIDENCE);
 
   // ─── Camera ──────────────────────────────────────────────────────
 
@@ -35,11 +43,7 @@ export default function HomeScreen() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          'İzin Gerekli',
-          'Fotoğraf çekebilmek için kamera izni vermeniz gerekmektedir.',
-          [{ text: 'Tamam' }]
-        );
+        Alert.alert(T.perm_title, T.perm_camera, [{ text: T.ok }]);
         return;
       }
 
@@ -57,9 +61,9 @@ export default function HomeScreen() {
         setError('');
       }
     } catch (err) {
-      setError('Kamera açılırken bir hata oluştu.');
+      setError(T.err_camera);
     }
-  }, []);
+  }, [T]);
 
   // ─── Gallery ─────────────────────────────────────────────────────
 
@@ -67,11 +71,7 @@ export default function HomeScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          'İzin Gerekli',
-          'Galeriye erişebilmek için fotoğraf izni vermeniz gerekmektedir.',
-          [{ text: 'Tamam' }]
-        );
+        Alert.alert(T.perm_title, T.perm_gallery, [{ text: T.ok }]);
         return;
       }
 
@@ -89,9 +89,9 @@ export default function HomeScreen() {
         setError('');
       }
     } catch (err) {
-      setError('Galeri açılırken bir hata oluştu.');
+      setError(T.err_gallery);
     }
-  }, []);
+  }, [T]);
 
   // ─── Analyze ─────────────────────────────────────────────────────
 
@@ -104,7 +104,14 @@ export default function HomeScreen() {
     setResultImageBase64(null);
 
     try {
-      const result = await analyzeImage(imageUri);
+      // Kullanıcı adı ve dil gönderilir → sonuç analiz_gecmisi'ne kaydedilir.
+      const result = await analyzeImage(
+        imageUri,
+        confidence,
+        undefined,
+        params.username,
+        lang
+      );
       setAnalysisResult(result);
       // API'den dönen kutucuklu görselin TAM data URI'sini (data:image/jpeg;base64,...)
       // olduğu gibi sakla; ekrana basarken tekrar önek eklenmez.
@@ -113,11 +120,17 @@ export default function HomeScreen() {
         setResultImageBase64(boxedImage);
       }
     } catch (err: any) {
-      setError(err.message || 'Analiz sırasında beklenmeyen bir hata oluştu.');
+      setError(
+        apiErrorText(
+          err?.code,
+          T,
+          lang === 'tr' ? err?.message : T.err_analyze
+        )
+      );
     } finally {
       setLoading(false);
     }
-  }, [imageUri]);
+  }, [imageUri, T]);
 
   // ─── Reset ───────────────────────────────────────────────────────
 
@@ -128,70 +141,93 @@ export default function HomeScreen() {
     setError('');
   }, []);
 
-  // ─── Logout ──────────────────────────────────────────────────────
-
-  const handleLogout = useCallback(() => {
-    Alert.alert('Çıkış', 'Çıkış yapmak istediğinize emin misiniz?', [
-      { text: 'İptal', style: 'cancel' },
-      {
-        text: 'Çıkış Yap',
-        style: 'destructive',
-        onPress: () => router.replace('/'),
-      },
-    ]);
-  }, [router]);
+  // Çıkış işlemi artık ortak AppHeader bileşeninde.
 
   // ─── Helpers ─────────────────────────────────────────────────────
 
   const getRiskColor = riskColor;
 
   const getRiskLabel = (score: number): string => {
-    if (score < 30) return 'Düşük Kayıp';
-    if (score < 60) return 'Orta Kayıp';
-    return 'Yüksek Kayıp';
+    if (score < 30) return T.risk_low;
+    if (score < 60) return T.risk_mid;
+    return T.risk_high;
   };
 
   const summary = analysisResult?.summary;
+
+  // Seçili dile göre veri alanı: API hem TR hem EN karşılıkları döndürüyor.
+  const isTR = lang === 'tr';
+  const plantTypes = summary
+    ? isTR
+      ? summary.plant_types_tr
+      : summary.plant_types
+    : [];
+  // Yüzde biçimi: TR'de "%94", EN'de "94%"
+  const pct = (value: number): string =>
+    isTR ? `%${Math.round(value)}` : `${Math.round(value)}%`;
+  // Tedavi metinleri Firestore'da TR/EN olarak ayrı tutuluyor.
+  const treatmentOf = (disease: Disease) =>
+    (isTR ? disease.treatment_tr : disease.treatment_en) ||
+    ({ ilac: '', sonuc: '', ekonomi: '' } as Disease['treatment_tr']);
 
   // ─── Render ──────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ── Header ────────────────────────────────────────────── */}
-      <View style={styles.header}>
-        <View style={styles.headerAccent} />
-        <View style={styles.headerContent}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>🌿 Tarımsal Analiz</Text>
-            <Text style={styles.headerSubtitle}>
-              Yapay zekâ destekli bitki hastalığı teşhisi
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.logoutText}>Çıkış</Text>
-          </TouchableOpacity>
-        </View>
-        {/* User greeting */}
-        <View style={styles.greetingRow}>
-          <View style={styles.greetingDot} />
-          <Text style={styles.greetingText}>
-            Hoş geldiniz, <Text style={styles.greetingName}>{username}</Text>
-          </Text>
-        </View>
-      </View>
+      <AppHeader username={username} />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── HERO — app.py ana sayfasındaki tanıtım kartı ──────── */}
+        <View style={styles.hero}>
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeText}>{T.nav_powered}</Text>
+          </View>
+          <Text style={styles.heroTitle}>{T.main_title}</Text>
+          <Text style={styles.heroDesc}>{T.main_desc}</Text>
+        </View>
+
+        {/* ── KPI KARTLARI (app.py st.metric dörtlüsü) ──────────── */}
+        <View style={styles.kpiGrid}>
+          {[
+            { v: isTR ? '%94' : '94%', l: T.kpi_acc, d: T.kpi_acc_d },
+            { v: isTR ? '<1 sn' : '<1 s', l: T.kpi_time, d: T.kpi_time_d },
+            { v: '29', l: T.kpi_dis, d: T.kpi_dis_d },
+            { v: '13', l: T.kpi_plants, d: T.kpi_plants_d },
+          ].map((kpi) => (
+            <View key={kpi.l} style={styles.kpiCard}>
+              <Text style={styles.kpiValue}>{kpi.v}</Text>
+              <Text style={styles.kpiLabel}>{kpi.l}</Text>
+              <Text style={styles.kpiHint}>{kpi.d}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ── GÜVEN EŞİĞİ — app.py'deki st.slider'ın birebir karşılığı ── */}
+        <View style={styles.sectionCard}>
+          <View style={styles.confHeader}>
+            <Text style={styles.sectionTitle}>{T.conf_label}</Text>
+            <View style={styles.confValueBadge}>
+              <Text style={styles.confValueText}>{confidence.toFixed(2)}</Text>
+            </View>
+          </View>
+          <ConfidenceSlider
+            value={confidence}
+            onChange={setConfidence}
+            min={0}
+            max={1}
+            step={0.01}
+            disabled={loading}
+          />
+          <Text style={styles.confHint}>{T.conf_hint}</Text>
+        </View>
+
         {/* ── Photo Section ─────────────────────────────────────── */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Fotoğraf</Text>
+          <Text style={styles.sectionTitle}>{T.sec_photo}</Text>
           <View style={styles.photoArea}>
             {resultImageBase64 ? (
               // Analiz sonrası: API'den dönen kutucuklu (bounding box) görsel.
@@ -210,12 +246,8 @@ export default function HomeScreen() {
               />
             ) : (
               <View style={styles.photoPlaceholder}>
-                <Text style={styles.placeholderText}>
-                  Yaprak fotoğrafı çekin veya seçin
-                </Text>
-                <Text style={styles.placeholderHint}>
-                  Aşağıdaki butonları kullanarak başlayın
-                </Text>
+                <Text style={styles.placeholderText}>{T.photo_ph}</Text>
+                <Text style={styles.placeholderHint}>{T.photo_hint}</Text>
               </View>
             )}
           </View>
@@ -229,7 +261,7 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             disabled={loading}
           >
-            <Text style={styles.actionButtonText}>Kamera</Text>
+            <Text style={styles.actionButtonText}>{T.btn_camera}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -238,7 +270,7 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             disabled={loading}
           >
-            <Text style={styles.actionButtonText}>Galeri</Text>
+            <Text style={styles.actionButtonText}>{T.btn_gallery}</Text>
           </TouchableOpacity>
         </View>
 
@@ -256,11 +288,12 @@ export default function HomeScreen() {
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={COLORS.white} />
               <Text style={styles.analyzeButtonText}>
-                {'  '}Analiz ediliyor...
+                {'  '}
+                {T.analyzing}
               </Text>
             </View>
           ) : (
-            <Text style={styles.analyzeButtonText}>Analiz Et</Text>
+            <Text style={styles.analyzeButtonText}>{T.btn_analyze}</Text>
           )}
         </TouchableOpacity>
 
@@ -276,24 +309,24 @@ export default function HomeScreen() {
           <View style={styles.resultsContainer}>
             <View style={styles.resultsDivider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Analiz Sonuçları</Text>
+              <Text style={styles.dividerText}>{T.results_title}</Text>
               <View style={styles.dividerLine} />
             </View>
 
             {/* Plant Type Card */}
             <View style={styles.resultCard}>
               <View style={styles.resultCardHeader}>
-                <Text style={styles.resultCardTitle}>Tespit Edilen Bitki</Text>
+                <Text style={styles.resultCardTitle}>{T.res_plant}</Text>
               </View>
               <View style={styles.plantChipsRow}>
-                {summary.plant_types_tr.length > 0 ? (
-                  summary.plant_types_tr.map((plant, idx) => (
+                {plantTypes.length > 0 ? (
+                  plantTypes.map((plant, idx) => (
                     <View key={idx} style={styles.plantChip}>
                       <Text style={styles.plantChipText}>{plant}</Text>
                     </View>
                   ))
                 ) : (
-                  <Text style={styles.noDataText}>Bitki türü tespit edilemedi</Text>
+                  <Text style={styles.noDataText}>{T.no_plant}</Text>
                 )}
               </View>
             </View>
@@ -301,7 +334,7 @@ export default function HomeScreen() {
             {/* Health Status */}
             <View style={styles.resultCard}>
               <View style={styles.resultCardHeader}>
-                <Text style={styles.resultCardTitle}>Sağlık Durumu</Text>
+                <Text style={styles.resultCardTitle}>{T.res_health}</Text>
               </View>
               <View
                 style={[
@@ -325,8 +358,8 @@ export default function HomeScreen() {
                   ]}
                 >
                   {summary.is_healthy
-                    ? 'Sağlıklı'
-                    : `${summary.disease_count} Hastalık Tespit Edildi`}
+                    ? T.healthy
+                    : format(T.diseases_found, summary.disease_count)}
                 </Text>
               </View>
             </View>
@@ -334,7 +367,7 @@ export default function HomeScreen() {
             {/* Risk Score */}
             <View style={styles.resultCard}>
               <View style={styles.resultCardHeader}>
-                <Text style={styles.resultCardTitle}>Tahmini Verim Kaybı</Text>
+                <Text style={styles.resultCardTitle}>{T.risk_label}</Text>
               </View>
               <View style={styles.riskScoreContainer}>
                 <Text
@@ -343,7 +376,7 @@ export default function HomeScreen() {
                     { color: getRiskColor(summary.risk_score) },
                   ]}
                 >
-                  %{Math.round(summary.risk_score)}
+                  {pct(summary.risk_score)}
                 </Text>
                 <View
                   style={[
@@ -382,19 +415,21 @@ export default function HomeScreen() {
             {analysisResult.detections.length > 0 && (
               <View style={styles.resultCard}>
                 <View style={styles.resultCardHeader}>
-                  <Text style={styles.resultCardTitle}>Tespit Detayları</Text>
+                  <Text style={styles.resultCardTitle}>{T.res_detections}</Text>
                 </View>
                 {analysisResult.detections.map((det, idx) => (
                   <View key={idx} style={styles.detectionRow}>
                     <View style={styles.detectionLeft}>
                       <View style={styles.detectionDot} />
                       <Text style={styles.detectionName}>
-                        {det.class_name_tr || det.class_name}
+                        {isTR
+                          ? det.class_name_tr || det.class_name
+                          : det.class_name}
                       </Text>
                     </View>
                     <View style={styles.confidenceBadge}>
                       <Text style={styles.confidenceText}>
-                        %{Math.round(det.confidence * 100)}
+                        {pct(det.confidence * 100)}
                       </Text>
                     </View>
                   </View>
@@ -407,7 +442,7 @@ export default function HomeScreen() {
               <>
                 <View style={styles.diseaseSectionHeader}>
                   <Text style={styles.diseaseSectionTitle}>
-                    Hastalık Bilgileri ve Tedavi Önerileri
+                    {T.disease_section}
                   </Text>
                 </View>
 
@@ -419,13 +454,15 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.diseaseNameContainer}>
                         <Text style={styles.diseaseName}>
-                          {disease.name_tr || disease.name}
+                          {isTR ? disease.name_tr || disease.name : disease.name}
                         </Text>
-                        {disease.name_tr && disease.name !== disease.name_tr && (
-                          <Text style={styles.diseaseNameEn}>
-                            {disease.name}
-                          </Text>
-                        )}
+                        {isTR &&
+                          disease.name_tr &&
+                          disease.name !== disease.name_tr && (
+                            <Text style={styles.diseaseNameEn}>
+                              {disease.name}
+                            </Text>
+                          )}
                       </View>
                     </View>
 
@@ -436,9 +473,9 @@ export default function HomeScreen() {
                         { borderLeftColor: COLORS.success },
                       ]}
                     >
-                      <Text style={styles.treatmentLabel}>Önerilen İlaç</Text>
+                      <Text style={styles.treatmentLabel}>{T.lbl_ilac}</Text>
                       <Text style={styles.treatmentText}>
-                        {disease.treatment_tr?.ilac || 'Bilgi mevcut değil'}
+                        {treatmentOf(disease).ilac || T.no_info}
                       </Text>
                     </View>
 
@@ -449,9 +486,9 @@ export default function HomeScreen() {
                         { borderLeftColor: COLORS.amber },
                       ]}
                     >
-                      <Text style={styles.treatmentLabel}>Zirai Beklenti</Text>
+                      <Text style={styles.treatmentLabel}>{T.lbl_sonuc}</Text>
                       <Text style={styles.treatmentText}>
-                        {disease.treatment_tr?.sonuc || 'Bilgi mevcut değil'}
+                        {treatmentOf(disease).sonuc || T.no_info}
                       </Text>
                     </View>
 
@@ -462,9 +499,9 @@ export default function HomeScreen() {
                         { borderLeftColor: COLORS.info },
                       ]}
                     >
-                      <Text style={styles.treatmentLabel}>Finansal Etki</Text>
+                      <Text style={styles.treatmentLabel}>{T.lbl_ekonomi}</Text>
                       <Text style={styles.treatmentText}>
-                        {disease.treatment_tr?.ekonomi || 'Bilgi mevcut değil'}
+                        {treatmentOf(disease).ekonomi || T.no_info}
                       </Text>
                     </View>
                   </View>
@@ -478,14 +515,38 @@ export default function HomeScreen() {
               onPress={handleReset}
               activeOpacity={0.8}
             >
-              <Text style={styles.resetButtonText}>Yeni Analiz</Text>
+              <Text style={styles.resetButtonText}>{T.btn_new_analysis}</Text>
             </TouchableOpacity>
           </View>
         )}
 
+        {/* ── NASIL ÇALIŞIR? — app.py'deki üç adım bölümü ───────── */}
+        {!analysisResult && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>{T.how_title}</Text>
+            {[
+              { n: '1', t: T.step1_t, d: T.step1_d },
+              { n: '2', t: T.step2_t, d: T.step2_d },
+              { n: '3', t: T.step3_t, d: T.step3_d },
+            ].map((step) => (
+              <View key={step.n} style={styles.stepRow}>
+                <View style={styles.stepNum}>
+                  <Text style={styles.stepNumText}>{step.n}</Text>
+                </View>
+                <View style={styles.stepBody}>
+                  <Text style={styles.stepTitle}>{step.t}</Text>
+                  <Text style={styles.stepDesc}>{step.d}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Bottom Spacer */}
-        <View style={{ height: 40 }} />
+        <View style={{ height: 20 }} />
       </ScrollView>
+
+      <BottomNav active="home" username={username} />
     </SafeAreaView>
   );
 }
@@ -498,58 +559,145 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgPage,
   },
 
-  // Header
-  header: {
+  // Başlık ortak bileşende (src/components/AppHeader.tsx)
+
+  // ── HERO — app.py ana sayfasındaki tanıtım kartı ──
+  hero: {
     backgroundColor: COLORS.bgCard,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    shadowColor: SHADOW_TINT,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
   },
-  headerAccent: {
-    height: 4,
-    backgroundColor: COLORS.primary,
+  heroBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.successSoft,
+    borderWidth: 1,
+    borderColor: COLORS.successBorder,
+    borderRadius: 100,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 10,
   },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 4,
+  heroBadgeText: {
+    fontFamily: FONTS.semibold,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    color: COLORS.success,
   },
-  headerLeft: {
-    flex: 1,
-  },
-  headerTitle: {
+  heroTitle: {
     fontFamily: FONTS.extrabold,
     fontSize: 22,
+    lineHeight: 28,
     color: COLORS.textDark,
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
+    marginBottom: 8,
   },
-  headerSubtitle: {
+  heroDesc: {
     fontFamily: FONTS.regular,
-    fontSize: 13,
+    fontSize: 13.5,
+    lineHeight: 20,
     color: COLORS.textSoft,
+  },
+
+  // ── KPI kartları ──
+  kpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 12,
+  },
+  kpiCard: {
+    flexBasis: '47.5%',
+    flexGrow: 1,
+    backgroundColor: COLORS.bgCard,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    padding: 14,
+  },
+  kpiValue: {
+    fontFamily: FONTS.extrabold,
+    fontSize: 22,
+    color: COLORS.primaryText,
+    letterSpacing: -0.6,
+  },
+  kpiLabel: {
+    fontFamily: FONTS.semibold,
+    fontSize: 12.5,
+    color: COLORS.textDark,
     marginTop: 2,
   },
-  logoutButton: {
-    height: 34,
-    paddingHorizontal: 14,
-    borderRadius: 100,
-    backgroundColor: COLORS.primarySoft,
-    justifyContent: 'center',
+  kpiHint: {
+    fontFamily: FONTS.medium,
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 1,
+  },
+
+  // ── Güven eşiği kaydırıcısı ──
+  confHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  confValueBadge: {
+    backgroundColor: COLORS.primarySoft,
     borderWidth: 1,
     borderColor: COLORS.primaryBorder,
+    borderRadius: 100,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    minWidth: 58,
+    alignItems: 'center',
   },
-  logoutText: {
-    fontFamily: FONTS.semibold,
-    fontSize: 13,
+  confValueText: {
+    fontFamily: FONTS.bold,
+    fontSize: 13.5,
     color: COLORS.primaryText,
+  },
+  confHint: {
+    fontFamily: FONTS.medium,
+    fontSize: 11.5,
+    lineHeight: 17,
+    color: COLORS.textSoft,
+    marginTop: 10,
+  },
+
+  // ── Üç adım bölümü ──
+  stepRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  stepNum: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepNumText: {
+    fontFamily: FONTS.extrabold,
+    fontSize: 14,
+    color: COLORS.white,
+  },
+  stepBody: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: COLORS.textDark,
+  },
+  stepDesc: {
+    fontFamily: FONTS.regular,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: COLORS.textSoft,
+    marginTop: 2,
   },
   greetingRow: {
     flexDirection: 'row',
@@ -562,17 +710,18 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.primary,
+    // koyu yeşil başlık üzerinde parlak yeşil nokta
+    backgroundColor: '#34c46a',
     marginRight: 8,
   },
   greetingText: {
     fontFamily: FONTS.regular,
     fontSize: 13,
-    color: COLORS.textSoft,
+    color: COLORS.darkGreenText,
   },
   greetingName: {
     fontFamily: FONTS.bold,
-    color: COLORS.textMid,
+    color: COLORS.white,
   },
 
   // Scroll
@@ -687,7 +836,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   analyzeButtonDisabled: {
-    backgroundColor: '#bcc8c1',
+    backgroundColor: '#b9c7bf',
     shadowOpacity: 0,
     elevation: 0,
   },

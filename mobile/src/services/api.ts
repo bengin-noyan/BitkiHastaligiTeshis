@@ -45,6 +45,50 @@ export interface LoginResult {
   username: string;
 }
 
+export interface RegisterResult {
+  success: boolean;
+  message: string;
+}
+
+export interface HistoryRecord {
+  islem_id: number;
+  bitki_turu: string;
+  hastalik_durumu: string;
+  guven_skoru: number;
+  tarih: string;
+}
+
+export interface HistoryResult {
+  success: boolean;
+  records: HistoryRecord[];
+  message?: string;
+}
+
+export interface HistoryDeleteResult {
+  success: boolean;
+  deleted: number;
+  message?: string;
+}
+
+// ─── Hata tipi ───────────────────────────────────────────────────────
+
+/**
+ * Ağ/sunucu hatalarını dilden bağımsız bir `code` ile taşır; ekranlar bu kodu
+ * seçili dile göre metne çevirir (bkz. constants/i18n.ts → apiErrorText).
+ * `message` alanı Türkçe varsayılan metni tutmaya devam eder.
+ */
+export type ApiErrorCode = 'network' | 'timeout' | 'server';
+
+export class ApiError extends Error {
+  code: ApiErrorCode;
+
+  constructor(code: ApiErrorCode, message: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+  }
+}
+
 // ─── API Client ──────────────────────────────────────────────────────
 
 const apiClient = axios.create({
@@ -104,15 +148,125 @@ export async function login(
     return response.data;
   } catch (error: any) {
     if (error.response) {
-      throw new Error(
+      throw new ApiError(
+        'server',
         error.response.data?.detail ||
           'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.'
       );
     }
     if (error.code === 'ECONNABORTED') {
-      throw new Error('Bağlantı zaman aşımına uğradı. Tekrar deneyin.');
+      throw new ApiError(
+        'timeout',
+        'Bağlantı zaman aşımına uğradı. Tekrar deneyin.'
+      );
     }
-    throw new Error(
+    throw new ApiError(
+      'network',
+      'Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.'
+    );
+  }
+}
+
+// ─── Register ────────────────────────────────────────────────────────
+
+export async function register(
+  username: string,
+  password: string
+): Promise<RegisterResult> {
+  try {
+    const response = await withRetry(() =>
+      apiClient.post<RegisterResult>(
+        API_ENDPOINTS.REGISTER,
+        { username, password },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 15000,
+        }
+      )
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw new ApiError(
+        'server',
+        error.response.data?.detail || 'Kayıt başarısız. Lütfen tekrar deneyin.'
+      );
+    }
+    if (error.code === 'ECONNABORTED') {
+      throw new ApiError(
+        'timeout',
+        'Bağlantı zaman aşımına uğradı. Tekrar deneyin.'
+      );
+    }
+    throw new ApiError(
+      'network',
+      'Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.'
+    );
+  }
+}
+
+// ─── History ─────────────────────────────────────────────────────────
+
+export async function fetchHistory(username: string): Promise<HistoryResult> {
+  try {
+    const response = await withRetry(() =>
+      apiClient.get<HistoryResult>(API_ENDPOINTS.HISTORY, {
+        params: { username },
+        timeout: 15000,
+      })
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw new ApiError(
+        'server',
+        error.response.data?.detail || 'Kayıtlar okunamadı.'
+      );
+    }
+    if (error.code === 'ECONNABORTED') {
+      throw new ApiError(
+        'timeout',
+        'Bağlantı zaman aşımına uğradı. Tekrar deneyin.'
+      );
+    }
+    throw new ApiError(
+      'network',
+      'Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.'
+    );
+  }
+}
+
+export async function deleteHistoryRecords(
+  username: string,
+  ids: number[]
+): Promise<HistoryDeleteResult> {
+  try {
+    const response = await withRetry(() =>
+      apiClient.post<HistoryDeleteResult>(
+        API_ENDPOINTS.HISTORY_DELETE,
+        { username, ids },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 15000,
+        }
+      )
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw new ApiError(
+        'server',
+        error.response.data?.detail || 'Kayıtlar silinemedi.'
+      );
+    }
+    if (error.code === 'ECONNABORTED') {
+      throw new ApiError(
+        'timeout',
+        'Bağlantı zaman aşımına uğradı. Tekrar deneyin.'
+      );
+    }
+    throw new ApiError(
+      'network',
       'Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.'
     );
   }
@@ -123,7 +277,10 @@ export async function login(
 export async function analyzeImage(
   imageUri: string,
   confidence?: number,
-  model: string = ANALYSIS_MODEL
+  model: string = ANALYSIS_MODEL,
+  // Analizi geçmişe kaydetmek için: kullanıcı adı ve kayıt metinlerinin dili
+  username?: string,
+  lang: 'tr' | 'en' = 'tr'
 ): Promise<AnalysisResult> {
   try {
     const formData = new FormData();
@@ -157,6 +314,14 @@ export async function analyzeImage(
     // (plantdoc_150epoch.pt). Backend bu alanı okumasa da istek bozulmaz.
     formData.append('model', model);
 
+    // Dil, kutucuk etiketlerinin ve geçmiş kaydının dilini belirler.
+    formData.append('lang', lang);
+
+    // Kullanıcı adı gönderilirse backend sonucu analiz_gecmisi tablosuna yazar.
+    if (username) {
+      formData.append('username', username);
+    }
+
     const response = await withRetry(() =>
       apiClient.post<AnalysisResult>(
         API_ENDPOINTS.ANALYZE,
@@ -171,17 +336,20 @@ export async function analyzeImage(
     return response.data;
   } catch (error: any) {
     if (error.response) {
-      throw new Error(
+      throw new ApiError(
+        'server',
         error.response.data?.detail ||
           'Analiz sırasında bir hata oluştu. Tekrar deneyin.'
       );
     }
     if (error.code === 'ECONNABORTED') {
-      throw new Error(
+      throw new ApiError(
+        'timeout',
         'Analiz zaman aşımına uğradı. Fotoğraf boyutunu küçültüp tekrar deneyin.'
       );
     }
-    throw new Error(
+    throw new ApiError(
+      'network',
       'Sunucuya bağlanılamadı. İnternet bağlantınızı ve sunucu adresini kontrol edin.'
     );
   }
