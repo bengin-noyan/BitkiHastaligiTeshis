@@ -10,6 +10,7 @@ import base64
 import io
 import os
 import sqlite3
+from datetime import datetime
 from typing import Optional
 
 import firebase_admin
@@ -52,6 +53,13 @@ CLASS_TR = {
     "mold": "Küf", "mildew": "Külleme", "rot": "Çürüklük",
     "early": "Erken", "late": "Geç", "black": "Siyah",
     "bacterial": "Bakteriyel", "mosaic": "Mozaik",
+    # app.py'deki CLASS_TR ile eşitlenen ek karşılıklar
+    "yellow": "Sarı", "blueberry": "Yaban Mersini", "gray": "Gri",
+    "soyabean": "Soya Fasulyesi", "septoria": "Septoria",
+    "two": "İki", "spotted": "Noktalı", "spider": "Örümcek",
+    "mites": "Akarı",
+    # Boş karşılık = etikette atlanır (app.py ile aynı davranış)
+    "powdery": "",
 }
 
 # ──────────────────────────────────────────────
@@ -137,6 +145,47 @@ class LoginResponse(BaseModel):
     username: str = ""
 
 
+class RegisterRequest(BaseModel):
+    """Kayıt isteği için veri modeli."""
+    username: str
+    password: str
+
+
+class RegisterResponse(BaseModel):
+    """Kayıt yanıtı için veri modeli."""
+    success: bool
+    message: str = ""
+
+
+class HistoryRecord(BaseModel):
+    """analiz_gecmisi tablosundaki tek bir kayıt."""
+    islem_id: int
+    bitki_turu: str = ""
+    hastalik_durumu: str = ""
+    guven_skoru: float = 0.0
+    tarih: str = ""
+
+
+class HistoryResponse(BaseModel):
+    """Geçmiş analiz listesi yanıtı."""
+    success: bool
+    records: list[HistoryRecord] = []
+    message: str = ""
+
+
+class HistoryDeleteRequest(BaseModel):
+    """Seçili geçmiş kayıtlarını silme isteği."""
+    username: str
+    ids: list[int]
+
+
+class HistoryDeleteResponse(BaseModel):
+    """Silme işlemi yanıtı."""
+    success: bool
+    deleted: int = 0
+    message: str = ""
+
+
 # ──────────────────────────────────────────────
 # Yardımcı fonksiyonlar
 # ──────────────────────────────────────────────
@@ -154,8 +203,44 @@ def translate_class_name(class_name: str) -> str:
     Örnek: 'Tomato leaf bacterial spot' → 'Domates Yaprağı Bakteriyel Lekesi'
     """
     words = class_name.lower().replace("_", " ").split()
-    translated_words = [CLASS_TR.get(w, w.capitalize()) for w in words]
+    # Boş karşılığı olan kelimeler (ör. 'powdery') atlanır — app.py'deki
+    # sinif_ismi_ceviri() ile birebir aynı davranış.
+    translated_words = [
+        tr for w in words if (tr := CLASS_TR.get(w, w.capitalize()))
+    ]
     return " ".join(translated_words)
+
+
+def draw_annotated_image(result, lang: str = "tr"):
+    """
+    Tespit kutucuklarını app.py'deki analiz_gorseli_ciz() ile aynı biçimde çizer:
+    etiket seçili dilde ("Domates Yaprağı Erken Yanıklık" / "Tomato leaf late blight")
+    ve güven skoru yüzde olarak ("%94" / "94%"). BGR bir numpy dizisi döndürür.
+    """
+    # Import fonksiyon içinde: ultralytics'in tembel yüklenmesini bozmamak için.
+    from ultralytics.utils.plotting import Annotator, colors
+
+    is_tr = lang != "en"
+    names = result.names if hasattr(result, "names") else model.names
+    labels = (
+        {k: translate_class_name(v) for k, v in names.items()}
+        if is_tr
+        else dict(names)
+    )
+
+    # example= Türkçe karakter içerdiğinde Annotator otomatik Unicode (PIL) moduna geçer.
+    annotator = Annotator(result.orig_img.copy(), example=str(labels))
+
+    boxes = result.boxes
+    if boxes is not None:
+        for box in boxes:
+            cls_id = int(box.cls)
+            yuzde = int(round(float(box.conf) * 100))
+            ad = labels.get(cls_id, str(cls_id))
+            etiket = f"{ad} %{yuzde}" if is_tr else f"{ad} {yuzde}%"
+            annotator.box_label(box.xyxy.squeeze(), etiket, color=colors(cls_id, True))
+
+    return annotator.result()
 
 
 def extract_disease_keyword(class_name: str) -> Optional[str]:
@@ -243,6 +328,171 @@ def login(request: LoginRequest):
 
 
 # ──────────────────────────────────────────────
+# POST /register — Yeni kullanıcı kaydı
+# ──────────────────────────────────────────────
+
+@app.post("/register", response_model=RegisterResponse)
+def register(request: RegisterRequest):
+    """
+    Yeni kullanıcıyı SQLite'a ekler (app.py'deki 'Kayıt Ol' sekmesiyle aynı mantık).
+    Kullanıcı adı küçük harfe çevrilerek saklanır; aynı ad varsa hata döner.
+    """
+    kullanici_adi = request.username.strip().lower()
+    sifre = request.password.strip()
+
+    if not kullanici_adi or not sifre:
+        return RegisterResponse(success=False, message="Lütfen tüm alanları doldurun.")
+
+    try:
+        conn = get_sqlite_connection()
+        cursor = conn.cursor()
+        su_an = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute(
+            "INSERT INTO kullanicilar (kullanici_adi, sifre, kayit_tarihi) VALUES (?, ?, ?)",
+            (kullanici_adi, sifre, su_an),
+        )
+        conn.commit()
+        conn.close()
+        return RegisterResponse(success=True, message="Kayıt başarılı.")
+
+    except sqlite3.IntegrityError:
+        return RegisterResponse(success=False, message="Bu kullanıcı adı zaten alınmış!")
+    except Exception as e:
+        print(f"[HATA] Kayıt sorgusunda hata: {e}")
+        return RegisterResponse(success=False, message="Kayıt sırasında bir hata oluştu.")
+
+
+# ──────────────────────────────────────────────
+# Analiz geçmişi — kaydetme yardımcı fonksiyonu
+# ──────────────────────────────────────────────
+
+def save_analysis_to_history(
+    username: str,
+    lang: str,
+    plant_types: list,
+    plant_types_tr: list,
+    diseases_info: list,
+    detected_classes: list,
+    confidence_scores: list,
+) -> None:
+    """
+    Analiz sonucunu analiz_gecmisi tablosuna yazar. Metinler app.py'deki
+    kayıt biçimiyle aynı tutulur ki web ve mobil aynı listeyi paylaşsın.
+    """
+    is_tr = lang != "en"
+
+    plants = plant_types_tr if is_tr else plant_types
+    bitki_turu = ", ".join(str(p) for p in plants) if plants else "Bilinmiyor"
+
+    if not detected_classes:
+        hastalik = "Tespit Edilemedi"
+    elif not diseases_info:
+        hastalik = "Sağlıklı" if is_tr else "Healthy"
+    else:
+        adlar = [
+            (d.get("name_tr") if is_tr else d.get("name")) or d.get("name", "")
+            for d in diseases_info
+        ]
+        hastalik = ", ".join(dict.fromkeys(a for a in adlar if a))
+
+    skor = (
+        round(sum(confidence_scores) / len(confidence_scores), 2)
+        if confidence_scores
+        else 0.0
+    )
+
+    try:
+        conn = get_sqlite_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO analiz_gecmisi (kullanici_adi, bitki_turu, hastalik_durumu, guven_skoru, tarih) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                username.strip().lower(),
+                bitki_turu,
+                hastalik,
+                skor,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[HATA] Analiz geçmişe kaydedilemedi: {e}")
+
+
+# ──────────────────────────────────────────────
+# GET /history — Kullanıcının geçmiş analizleri
+# ──────────────────────────────────────────────
+
+@app.get("/history", response_model=HistoryResponse)
+def history(username: str):
+    """
+    Yalnızca ilgili kullanıcının kayıtlarını, en yeniden eskiye döndürür
+    (app.py'deki veri izolasyonu kuralıyla aynı).
+    """
+    kullanici = username.strip().lower()
+    if not kullanici:
+        return HistoryResponse(success=False, message="Kullanıcı adı gerekli.")
+
+    try:
+        conn = get_sqlite_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT islem_id, bitki_turu, hastalik_durumu, guven_skoru, tarih "
+            "FROM analiz_gecmisi WHERE kullanici_adi = ? ORDER BY tarih DESC, islem_id DESC",
+            (kullanici,),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+
+        records = [
+            HistoryRecord(
+                islem_id=row["islem_id"],
+                bitki_turu=row["bitki_turu"] or "",
+                hastalik_durumu=row["hastalik_durumu"] or "",
+                guven_skoru=row["guven_skoru"] or 0.0,
+                tarih=row["tarih"] or "",
+            )
+            for row in rows
+        ]
+        return HistoryResponse(success=True, records=records)
+
+    except Exception as e:
+        print(f"[HATA] Geçmiş sorgusunda hata: {e}")
+        return HistoryResponse(success=False, message="Kayıtlar okunamadı.")
+
+
+# ──────────────────────────────────────────────
+# POST /history/delete — Seçili kayıtları sil
+# ──────────────────────────────────────────────
+
+@app.post("/history/delete", response_model=HistoryDeleteResponse)
+def history_delete(request: HistoryDeleteRequest):
+    """Kayıtları siler; kullanıcı adı koşulu sayesinde başkasının kaydı silinemez."""
+    kullanici = request.username.strip().lower()
+    if not kullanici or not request.ids:
+        return HistoryDeleteResponse(success=False, message="Silinecek kayıt seçilmedi.")
+
+    try:
+        conn = get_sqlite_connection()
+        cursor = conn.cursor()
+        placeholders = ",".join("?" * len(request.ids))
+        cursor.execute(
+            f"DELETE FROM analiz_gecmisi WHERE islem_id IN ({placeholders}) AND kullanici_adi = ?",
+            [int(i) for i in request.ids] + [kullanici],
+        )
+        deleted = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return HistoryDeleteResponse(success=True, deleted=deleted)
+
+    except Exception as e:
+        print(f"[HATA] Kayıt silme hatası: {e}")
+        return HistoryDeleteResponse(success=False, message="Kayıtlar silinemedi.")
+
+
+# ──────────────────────────────────────────────
 # POST /analyze — Görüntü analizi
 # ──────────────────────────────────────────────
 
@@ -250,6 +500,8 @@ def login(request: LoginRequest):
 async def analyze(
     file: UploadFile = File(..., description="Analiz edilecek bitki görseli"),
     confidence: float = Form(0.25, description="Minimum güven eşiği (0-1)"),
+    username: str = Form("", description="Analizi geçmişe kaydedilecek kullanıcı"),
+    lang: str = Form("tr", description="Kayıt metinlerinin dili: tr | en"),
 ):
     """
     Yüklenen bitki görselini YOLOv8 modeli ile analiz eder.
@@ -272,7 +524,10 @@ async def analyze(
         confidence_scores = [float(c) for c in results[0].boxes.conf]
 
         # --- İşaretlenmiş görseli base64'e dönüştür ---
-        annotated_bgr = results[0].plot()
+        # plot() etiketleri İngilizce ve güveni 0.94 gibi ondalık basar; app.py ile
+        # aynı görünüm için kutucuklar Annotator ile elle çizilir: seçili dilde ad
+        # + yüzde biçiminde güven skoru.
+        annotated_bgr = draw_annotated_image(results[0], lang)
         annotated_rgb = annotated_bgr[:, :, ::-1]  # BGR → RGB
         annotated_image = Image.fromarray(annotated_rgb)
 
@@ -343,6 +598,18 @@ async def analyze(
                 "treatment_tr": treatment["treatment_tr"],
                 "treatment_en": treatment["treatment_en"],
             })
+
+        # --- Analizi geçmişe kaydet (app.py'deki analizi_kaydet ile aynı mantık) ---
+        if username:
+            save_analysis_to_history(
+                username=username,
+                lang=lang,
+                plant_types=plant_types,
+                plant_types_tr=plant_types_tr,
+                diseases_info=diseases_info,
+                detected_classes=detected_classes,
+                confidence_scores=confidence_scores,
+            )
 
         # --- Yanıt oluştur ---
         response = {
