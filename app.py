@@ -1085,7 +1085,7 @@ def login_page():
         <style>
         .stApp {{
             background:
-                linear-gradient(180deg, rgba(248,250,252,0.12) 0%, rgba(248,250,252,0.10) 45%, rgba(248,250,252,0.22) 78%, rgba(250,250,250,0.40) 100%),
+                linear-gradient(180deg, rgba(248,250,252,0.06) 0%, rgba(248,250,252,0.05) 45%, rgba(248,250,252,0.14) 78%, rgba(250,250,250,0.28) 100%),
                 url("{_bg}") center top / cover no-repeat fixed !important;
         }}
         /* Ana uygulamadaki köşe ışıltıları (radial-gradient) giriş ekranında
@@ -1110,7 +1110,7 @@ def login_page():
     .lp-badge-dot { width: 6px; height: 6px; background: #7DA78C; border-radius: 50%; }
     .lp-card {
         background: transparent; border: none; box-shadow: none;
-        padding: 8px 0 4px 0;
+        padding: 0;
         animation: cardIn 0.45s cubic-bezier(0.34,1.56,0.64,1); text-align: center; position: relative;
     }
     @keyframes cardIn { from { opacity: 0; transform: translateY(16px); } to   { opacity: 1; transform: translateY(0); } }
@@ -1120,8 +1120,12 @@ def login_page():
     }
     /* Logo — şeffaf zeminli, arka planın üstünde serbest yüzer; drop-shadow ile
        hem parlar hem de metin/emblem arka plandan ayrışıp öne çıkar (kutu YOK). */
+    /* Logo eski (büyük) boyutunda: 440px. max-height yalnızca çok kısa
+       pencerelerde devreye giren güvenlik payıdır; normal ekranlarda ısırmaz. */
     .lp-logo {
-        display: block; width: 100%; max-width: 440px; height: auto; margin: 0 auto 6px auto;
+        display: block; width: auto; height: auto;
+        max-width: min(440px, 92%); max-height: 34dvh;
+        margin: 0 auto 2px auto;
         filter:
             drop-shadow(0 0 10px rgba(255,255,255,0.95))
             drop-shadow(0 0 3px rgba(255,255,255,0.95))
@@ -1129,15 +1133,15 @@ def login_page():
     }
     .lp-title { font-size: 1.55rem; font-weight: 800; color: #0f172a !important; margin: 0 0 8px 0; letter-spacing: -0.03em; }
     .lp-sub { font-size: 0.92rem; color: #64748b !important; margin: 0; font-weight: 400; line-height: 1.55; }
-    .lp-stats { display: flex; justify-content: center; gap: 8px; margin: 24px 0 4px 0; flex-wrap: wrap; }
+    .lp-stats { display: flex; justify-content: center; gap: 8px; margin: 8px 0 2px 0; flex-wrap: wrap; }
     .lp-pill {
-        padding: 5px 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 100px;
-        font-size: 0.74rem; color: #64748b !important; font-weight: 500;
+        padding: 6px 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 100px;
+        font-size: 0.74rem; line-height: 1.45; color: #64748b !important; font-weight: 500;
     }
     .lp-pill b { color: #0f172a !important; font-weight: 700; }
     /* Alt not ve telif satırı da görselin üstünde duruyor; .lp-pill ile aynı
        hafif beyaz hap görünümüne alınarak okunaklı hale getirilir. */
-    .lp-note-wrap { text-align: center; margin-top: 22px; }
+    .lp-note-wrap { text-align: center; margin-top: 12px; }
     .lp-footer-note {
         display: inline-block;
         padding: 6px 16px;
@@ -1158,9 +1162,18 @@ def login_page():
         background: #ffffff !important;
         border: 1px solid #e5e7eb !important;
         border-radius: 20px !important;
-        padding: 24px 30px 20px 30px !important;
+        padding: 16px 28px 18px 28px !important;
         box-shadow: 0 24px 60px rgba(15,23,42,0.22) !important;
+        /* Form paneli (ve altındaki telif satırı) logodan biraz daha aşağıda dursun */
+        margin-top: 18px !important;
+        /* Panel yanlardan daraltılır; logo (440px) kendi genişliğinde kalır. */
+        max-width: 480px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
     }
+    /* Form içindeki dikey boşluklar tek ekrana sığması için sıkılaştırılır. */
+    .st-key-login_panel [data-testid="stVerticalBlock"] { gap: 0.55rem !important; }
+    .st-key-login_panel [data-testid="stForm"] { padding: 0 !important; }
     .st-key-login_panel [data-baseweb="tab"] p { font-weight: 600 !important; }
     /* Etiketler (Kullanıcı Adı / Şifre) koyu ve okunaklı */
     .st-key-login_panel label p { color: #1e293b !important; font-weight: 600 !important; }
@@ -1197,103 +1210,36 @@ def login_page():
         transition: background-color 9999s ease-in-out 0s !important;
     }
 
-    /* ─── Landing Page Bölümleri ─── */
-    /* Bölüm başlıkları arka plan görselinin doğrudan üstünde duruyordu ve
-       yaprak dokusunda okunmuyordu. Kartlarla aynı dili konuşan (beyaz zemin,
-       #e5e7eb kenarlık, yuvarlak köşe) hafif buzlu bir panel içine alınır;
-       arka plan görseli panelin çevresinde ve altından görünmeye devam eder. */
-    .ls-head {
-        max-width: 780px;
-        margin: 0 auto 32px auto;
-        padding: 26px 30px 24px 30px;
-        text-align: center;
-        background: rgba(255,255,255,0.90);
-        -webkit-backdrop-filter: blur(8px);
-        backdrop-filter: blur(8px);
-        border: 1px solid #e5e7eb;
-        border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(15,23,42,0.10);
+    /* ─── TEK EKRAN (NO-SCROLL) YERLEŞİMİ ───
+       Giriş sayfası tam olarak görünür alan (100dvh) kadar yükseklik alır ve
+       içerik dikeyde ortalanır; sayfa kaydırma çubuğu oluşmaz. İçerik gerçekten
+       sığmazsa (çok kısa pencere) yalnızca iç konteyner kaydırılabilir kalır,
+       böylece form asla erişilemez hale gelmez. */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        overflow: hidden !important;
     }
-    .ls-section-tag {
-        display: inline-block;
-        background: #ecfdf5;
-        border: 1px solid #a7f3d0;
-        border-radius: 100px;
-        padding: 4px 14px;
-        font-size: 0.7rem;
-        color: #065f46 !important;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        margin-bottom: 14px;
+    .main .block-container,
+    [data-testid="stMainBlockContainer"] {
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        padding-top: 0.4rem !important;
+        padding-bottom: 0.4rem !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
     }
-    .ls-section-title {
-        font-size: 1.85rem;
-        font-weight: 800;
-        color: #0f172a !important;
-        letter-spacing: -0.03em;
-        margin: 0 0 12px 0;
-        line-height: 1.2;
+    /* İçeriği dikeyde ortala ve üst seviye bloklar arasındaki boşluğu kıs. */
+    [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
+        flex: 1 1 auto !important;
+        justify-content: center !important;
+        gap: 0.35rem !important;
     }
-    .ls-section-lede {
-        font-size: 1rem;
-        color: #64748b !important;
-        font-weight: 400;
-        line-height: 1.6;
-        margin: 0 0 8px 0;
-        max-width: 720px;
-    }
-    .ls-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
-        padding: 26px 24px;
-        height: 100%;
-        transition: border-color 0.2s ease, transform 0.2s ease;
-    }
-    .ls-card:hover {
-        border-color: #a7f3d0;
-        transform: translateY(-2px);
-    }
-    .ls-step-num {
-        width: 36px;
-        height: 36px;
-        background: #7DA78C;
-        color: #ffffff !important;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-        font-weight: 800;
-        margin-bottom: 14px;
-    }
-    .ls-feature-icon {
-        width: 44px;
-        height: 44px;
-        background: #ecfdf5;
-        border: 1px solid #a7f3d0;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
-        margin-bottom: 14px;
-    }
-    .ls-card-title {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #0f172a !important;
-        margin: 0 0 6px 0;
-        letter-spacing: -0.01em;
-    }
-    .ls-card-text {
-        font-size: 0.86rem;
-        color: #64748b !important;
-        line-height: 1.55;
-        margin: 0;
-    }
-    
+    /* Dil seçici ile logo arasındaki boşluk */
+    .stRadio { margin-bottom: 0 !important; }
+
     .stTabs [data-baseweb="tab-list"] { gap: 10px; justify-content: center; }
     .stTabs [data-baseweb="tab"] { padding-top: 10px; padding-bottom: 10px; }
 
@@ -1313,7 +1259,7 @@ def login_page():
         border-radius: 100px !important;
         padding: 4px 6px !important;
         width: fit-content !important;
-        margin: 0 auto 14px auto !important;
+        margin: 0 auto 6px auto !important;
         box-shadow: 0 1px 3px rgba(15,23,42,0.04) !important;
     }
     .stRadio [role="radiogroup"] label {
@@ -1410,7 +1356,6 @@ def login_page():
                 with st.form("login_form", clear_on_submit=False, border=False):
                     username = st.text_input(T["username"], placeholder=T["username_ph"], key="login_user")
                     password = st.text_input(T["password"], type="password", placeholder=T["password_ph"], key="login_pass")
-                    st.write("")
                     giris_yap = st.form_submit_button(T["btn_login"], use_container_width=True, type="primary")
                     st.markdown(f"<div style='text-align:right;font-size:0.72rem;color:#64748b;margin-top:6px;'>{T['form_enter_hint']}</div>", unsafe_allow_html=True)
 
@@ -1437,7 +1382,6 @@ def login_page():
                     new_user = st.text_input(T["new_username"], placeholder=T["new_username_ph"], key="reg_user")
                     new_pass = st.text_input(T["new_password"], type="password", placeholder=T["new_password_ph"], key="reg_pass")
                     new_pass2 = st.text_input(T["confirm_password"], type="password", placeholder=T["confirm_password_ph"], key="reg_pass2")
-                    st.write("")
                     kayit_ol = st.form_submit_button(T["btn_register"], use_container_width=True, type="primary")
                     st.markdown(f"<div style='text-align:right;font-size:0.72rem;color:#64748b;margin-top:6px;'>{T['form_enter_hint_register']}</div>", unsafe_allow_html=True)
 
@@ -1469,166 +1413,9 @@ def login_page():
             </div>
             """, unsafe_allow_html=True)
 
-    # Sayfa akışını bildiren alt not — panel dışında, tam ortalı.
+    # Sayfa sonu — yalnızca telif satırı; giriş ekranı tek ekrana sığar, kaydırma yok.
     st.markdown(f"""
-    <div class="lp-note-wrap"><span class="lp-footer-note">{T["footer_scroll"]}</span></div>
-    """, unsafe_allow_html=True)
-
-    # ══════════════════════════════════════════════════════
-    #  LANDING PAGE — Tam Genişlikte Vitrin Bölümleri
-    # ══════════════════════════════════════════════════════
-    st.write("")
-    st.write("")
-    st.divider()
-    st.write("")
-
-    # ─────────────────────────────────────────────────────
-    #  BÖLÜM 1 — PROJEMİZ HAKKINDA
-    # ─────────────────────────────────────────────────────
-    st.markdown(f"""
-    <div class="ls-head">
-        <span class="ls-section-tag">{T["sec1_tag"]}</span>
-        <h2 class="ls-section-title">{T["sec1_title"]}</h2>
-        <p class="ls-section-lede" style="margin:0 auto;">
-            {T["sec1_lede"]}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    h1, h2 = st.columns(2, gap="large")
-    with h1:
-        st.markdown(f"""
-        <div class="ls-card">
-            <h3 class="ls-card-title">{T["mission_title"]}</h3>
-            <p class="ls-card-text">
-                {T["mission_text"]}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    with h2:
-        st.markdown(f"""
-        <div class="ls-card">
-            <h3 class="ls-card-title">{T["tech_title"]}</h3>
-            <p class="ls-card-text">
-                {T["tech_text"]}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.write("")
-    st.write("")
-    st.write("")
-
-    # ─────────────────────────────────────────────────────
-    #  BÖLÜM 2 — NASIL ÇALIŞIR?
-    # ─────────────────────────────────────────────────────
-    st.markdown(f"""
-    <div class="ls-head">
-        <span class="ls-section-tag">{T["sec2_tag"]}</span>
-        <h2 class="ls-section-title">{T["sec2_title"]}</h2>
-        <p class="ls-section-lede" style="margin:0 auto;">
-            {T["sec2_lede"]}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    a1, a2, a3 = st.columns(3, gap="large")
-    with a1:
-        st.markdown(f"""
-        <div class="ls-card">
-            <div class="ls-step-num">1</div>
-            <h3 class="ls-card-title">{T["step1_t"]}</h3>
-            <p class="ls-card-text">
-                {T["step1_d"]}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    with a2:
-        st.markdown(f"""
-        <div class="ls-card">
-            <div class="ls-step-num">2</div>
-            <h3 class="ls-card-title">{T["step2_t"]}</h3>
-            <p class="ls-card-text">
-                {T["step2_d"]}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    with a3:
-        st.markdown(f"""
-        <div class="ls-card">
-            <div class="ls-step-num">3</div>
-            <h3 class="ls-card-title">{T["step3_t"]}</h3>
-            <p class="ls-card-text">
-                {T["step3_d"]}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.write("")
-    st.write("")
-    st.write("")
-
-    # ─────────────────────────────────────────────────────
-    #  BÖLÜM 3 — SİSTEM ÖZELLİKLERİ
-    # ─────────────────────────────────────────────────────
-    st.markdown(f"""
-    <div class="ls-head">
-        <span class="ls-section-tag">{T["sec3_tag"]}</span>
-        <h2 class="ls-section-title">{T["sec3_title"]}</h2>
-        <p class="ls-section-lede" style="margin:0 auto;">
-            {T["sec3_lede"]}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    f1, f2, f3, f4 = st.columns(4, gap="medium")
-    with f1:
-        st.markdown(f"""
-        <div class="ls-card">
-            <h3 class="ls-card-title">{T["feat1_t"]}</h3>
-            <p class="ls-card-text">
-                {T["feat1_d"]}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    with f2:
-        st.markdown(f"""
-        <div class="ls-card">
-            <h3 class="ls-card-title">{T["feat2_t"]}</h3>
-            <p class="ls-card-text">
-                {T["feat2_d"]}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    with f3:
-        st.markdown(f"""
-        <div class="ls-card">
-            <h3 class="ls-card-title">{T["feat3_t"]}</h3>
-            <p class="ls-card-text">
-                {T["feat3_d"]}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    with f4:
-        st.markdown(f"""
-        <div class="ls-card">
-            <h3 class="ls-card-title">{T["feat4_t"]}</h3>
-            <p class="ls-card-text">
-                {T["feat4_d"]}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # ─────────────────────────────────────────────────────
-    #  COPYRIGHT — Sayfa Sonu
-    # ─────────────────────────────────────────────────────
-    st.write("")
-    st.write("")
-    st.divider()
-    st.markdown(f"""
-    <div class="lp-note-wrap" style="padding:20px 0 10px 0;margin-top:0;">
-        <span class="lp-footer-note">{T["copyright"]}</span>
-    </div>
+    <div class="lp-note-wrap"><span class="lp-footer-note">{T["copyright"]}</span></div>
     """, unsafe_allow_html=True)
 
     # Login ekranı çizildikten SONRA modeli arka planda yüklemeye başla —
