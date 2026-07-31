@@ -1356,7 +1356,7 @@ def login_page():
                 with st.form("login_form", clear_on_submit=False, border=False):
                     username = st.text_input(T["username"], placeholder=T["username_ph"], key="login_user")
                     password = st.text_input(T["password"], type="password", placeholder=T["password_ph"], key="login_pass")
-                    giris_yap = st.form_submit_button(T["btn_login"], use_container_width=True, type="primary")
+                    giris_yap = st.form_submit_button(T["btn_login"], width="stretch", type="primary")
                     st.markdown(f"<div style='text-align:right;font-size:0.72rem;color:#64748b;margin-top:6px;'>{T['form_enter_hint']}</div>", unsafe_allow_html=True)
 
                 if giris_yap:
@@ -1382,7 +1382,7 @@ def login_page():
                     new_user = st.text_input(T["new_username"], placeholder=T["new_username_ph"], key="reg_user")
                     new_pass = st.text_input(T["new_password"], type="password", placeholder=T["new_password_ph"], key="reg_pass")
                     new_pass2 = st.text_input(T["confirm_password"], type="password", placeholder=T["confirm_password_ph"], key="reg_pass2")
-                    kayit_ol = st.form_submit_button(T["btn_register"], use_container_width=True, type="primary")
+                    kayit_ol = st.form_submit_button(T["btn_register"], width="stretch", type="primary")
                     st.markdown(f"<div style='text-align:right;font-size:0.72rem;color:#64748b;margin-top:6px;'>{T['form_enter_hint_register']}</div>", unsafe_allow_html=True)
 
                 if kayit_ol:
@@ -1569,7 +1569,7 @@ def main_app():
     st.sidebar.divider()
 
     # ── ÇIKIŞ ────────────────────────────────────────────
-    if st.sidebar.button(T["btn_logout"], use_container_width=True):
+    if st.sidebar.button(T["btn_logout"], width="stretch"):
         st.session_state.logged_in = False
         st.session_state.clear()
         st.rerun()
@@ -1780,13 +1780,13 @@ def ana_analiz_sayfasi(T, lang):
             image_slot = st.empty()
             sonuc_gorsel = analiz_gorseli_ciz(lang) if st.session_state.get("analiz_ok") else None
             if sonuc_gorsel is not None:
-                image_slot.image(sonuc_gorsel, caption=T["img_cap_res"], use_container_width=True)
+                image_slot.image(sonuc_gorsel, caption=T["img_cap_res"], width="stretch")
             else:
                 # Ham sonuç yoksa (ör. eski oturum state'i) orijinal görseli göster;
                 # çökmemesi sayesinde alttaki eylem planı da render edilmeye devam eder.
-                image_slot.image(img, caption=T["img_cap_orig"], use_container_width=True)
+                image_slot.image(img, caption=T["img_cap_orig"], width="stretch")
             st.write("")
-            run_btn = st.button(T["analyze_btn"], use_container_width=True, type="primary")
+            run_btn = st.button(T["analyze_btn"], width="stretch", type="primary")
 
         if run_btn:
             with col1, st.spinner(T["spinner"]):
@@ -1810,7 +1810,7 @@ def ana_analiz_sayfasi(T, lang):
                 # Orijinal görselin yerine tespit sonucunu (bounding box'lı) bas
                 _analiz_gorseli = analiz_gorseli_ciz(lang)
                 if _analiz_gorseli is not None:
-                    image_slot.image(_analiz_gorseli, caption=T["img_cap_res"], use_container_width=True)
+                    image_slot.image(_analiz_gorseli, caption=T["img_cap_res"], width="stretch")
                 
                 # ─── YENİ EKLENEN: SQL KAYIT İŞLEMİ ───
                 try:
@@ -2331,7 +2331,7 @@ def gecmis_analiz_sayfasi(T=None):
             marker_line_width=0,
             hovertemplate=f"<b>%{{x}}</b><br>{T['chart_count']}: %{{y}}<extra></extra>"
         )
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width="stretch")
 
     # ── SAĞ: Sağlıklı vs Enfekte (Donut Chart) ──────────
         with g2:
@@ -2384,7 +2384,7 @@ def gecmis_analiz_sayfasi(T=None):
                 marker=dict(line=dict(color="#ffffff", width=2)),
                 hovertemplate="<b>%{label}</b><br>%{value}<br>%{percent}<extra></extra>",
             )
-            st.plotly_chart(fig_donut, use_container_width=True)
+            st.plotly_chart(fig_donut, width="stretch")
 
     # ══════════════════════════════════════════════════════
     #  ALT KATMAN — DETAYLI VERİ TABLOSU
@@ -2411,7 +2411,7 @@ def gecmis_analiz_sayfasi(T=None):
 
     st.dataframe(
         df_tablo,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "islem_id": None,
@@ -2461,7 +2461,7 @@ def gecmis_analiz_sayfasi(T=None):
             T["delete_btn"],
             key="kayit_sil_btn",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         )
 
         if sil_btn and secilen_idler:
