@@ -37,7 +37,7 @@ export default function HomeScreen() {
   const [error, setError] = useState('');
   const [confidence, setConfidence] = useState<number>(DEFAULT_CONFIDENCE);
 
-  // ─── Camera ──────────────────────────────────────────────────────
+  // ----- kamera -----
 
   const pickFromCamera = useCallback(async () => {
     try {
@@ -65,7 +65,7 @@ export default function HomeScreen() {
     }
   }, [T]);
 
-  // ─── Gallery ─────────────────────────────────────────────────────
+  // ----- galeri -----
 
   const pickFromGallery = useCallback(async () => {
     try {
@@ -93,7 +93,7 @@ export default function HomeScreen() {
     }
   }, [T]);
 
-  // ─── Analyze ─────────────────────────────────────────────────────
+  // ----- analiz -----
 
   const handleAnalyze = useCallback(async () => {
     if (!imageUri) return;
@@ -104,7 +104,7 @@ export default function HomeScreen() {
     setResultImageBase64(null);
 
     try {
-      // Kullanıcı adı ve dil gönderilir → sonuç analiz_gecmisi'ne kaydedilir.
+      // kullanıcı adı ve dili de gönderiyoruz, backend sonucu geçmişe yazıyor
       const result = await analyzeImage(
         imageUri,
         confidence,
@@ -113,8 +113,8 @@ export default function HomeScreen() {
         lang
       );
       setAnalysisResult(result);
-      // API'den dönen kutucuklu görselin TAM data URI'sini (data:image/jpeg;base64,...)
-      // olduğu gibi sakla; ekrana basarken tekrar önek eklenmez.
+      // API'den gelen data uri'yi olduğu gibi saklıyorum,
+      // içinde zaten "data:image/jpeg;base64," öneki var, tekrar eklemeye gerek yok
       const boxedImage = result.image_base64 || result.result_image_base64;
       if (boxedImage) {
         setResultImageBase64(boxedImage);
@@ -132,7 +132,7 @@ export default function HomeScreen() {
     }
   }, [imageUri, T]);
 
-  // ─── Reset ───────────────────────────────────────────────────────
+  // ----- sıfırla -----
 
   const handleReset = useCallback(() => {
     setImageUri(null);
@@ -141,9 +141,9 @@ export default function HomeScreen() {
     setError('');
   }, []);
 
-  // Çıkış işlemi artık ortak AppHeader bileşeninde.
+  // çıkış butonu artık AppHeader'da
 
-  // ─── Helpers ─────────────────────────────────────────────────────
+  // ----- yardımcılar -----
 
   const getRiskColor = riskColor;
 
@@ -155,22 +155,22 @@ export default function HomeScreen() {
 
   const summary = analysisResult?.summary;
 
-  // Seçili dile göre veri alanı: API hem TR hem EN karşılıkları döndürüyor.
+  // API hem TR hem EN alanları döndürüyor, seçili dile göre olanı alıyoruz
   const isTR = lang === 'tr';
   const plantTypes = summary
     ? isTR
       ? summary.plant_types_tr
       : summary.plant_types
     : [];
-  // Yüzde biçimi: TR'de "%94", EN'de "94%"
+  // türkçede "%94", ingilizcede "94%" yazılıyor
   const pct = (value: number): string =>
     isTR ? `%${Math.round(value)}` : `${Math.round(value)}%`;
-  // Tedavi metinleri Firestore'da TR/EN olarak ayrı tutuluyor.
+  // tedavi metinleri firestore'da TR/EN diye ayrı duruyor
   const treatmentOf = (disease: Disease) =>
     (isTR ? disease.treatment_tr : disease.treatment_en) ||
     ({ ilac: '', sonuc: '', ekonomi: '' } as Disease['treatment_tr']);
 
-  // ─── Render ──────────────────────────────────────────────────────
+  // ----- render -----
 
   return (
     <SafeAreaView style={styles.container}>
@@ -181,7 +181,7 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── HERO — app.py ana sayfasındaki tanıtım kartı ──────── */}
+        {/* hero, app.py ana sayfasındaki tanıtım kartı */}
         <View style={styles.hero}>
           <View style={styles.heroBadge}>
             <Text style={styles.heroBadgeText}>{T.nav_powered}</Text>
@@ -190,7 +190,7 @@ export default function HomeScreen() {
           <Text style={styles.heroDesc}>{T.main_desc}</Text>
         </View>
 
-        {/* ── KPI KARTLARI (app.py st.metric dörtlüsü) ──────────── */}
+        {/* KPI kartları (app.py'deki dört st.metric) */}
         <View style={styles.kpiGrid}>
           {[
             { v: isTR ? '%94' : '94%', l: T.kpi_acc, d: T.kpi_acc_d },
@@ -206,7 +206,7 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* ── GÜVEN EŞİĞİ — app.py'deki st.slider'ın birebir karşılığı ── */}
+        {/* güven eşiği, app.py'deki st.slider'ın karşılığı */}
         <View style={styles.sectionCard}>
           <View style={styles.confHeader}>
             <Text style={styles.sectionTitle}>{T.conf_label}</Text>
@@ -225,20 +225,20 @@ export default function HomeScreen() {
           <Text style={styles.confHint}>{T.conf_hint}</Text>
         </View>
 
-        {/* ── Photo Section ─────────────────────────────────────── */}
+        {/* fotoğraf alanı */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>{T.sec_photo}</Text>
           <View style={styles.photoArea}>
             {resultImageBase64 ? (
-              // Analiz sonrası: API'den dönen kutucuklu (bounding box) görsel.
-              // resultImageBase64 zaten "data:image/jpeg;base64,..." önekini içerir.
+              // analizden sonra: API'den gelen kutucuklu görsel.
+              // resultImageBase64 zaten data uri, direkt basıyoruz.
               <Image
                 source={{ uri: resultImageBase64 }}
                 style={styles.photoImage}
                 resizeMode="contain"
               />
             ) : imageUri ? (
-              // Analiz öncesi: kullanıcının galeriden/kameradan seçtiği orijinal fotoğraf
+              // analizden önce: kullanıcının seçtiği orijinal fotoğraf
               <Image
                 source={{ uri: imageUri }}
                 style={styles.photoImage}
@@ -253,7 +253,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* ── Action Buttons ────────────────────────────────────── */}
+        {/* butonlar */}
         <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[styles.actionButton, styles.cameraButton]}
@@ -297,14 +297,14 @@ export default function HomeScreen() {
           )}
         </TouchableOpacity>
 
-        {/* ── Error Message ─────────────────────────────────────── */}
+        {/* hata mesajı */}
         {error !== '' && (
           <View style={styles.errorCard}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
 
-        {/* ── Results ───────────────────────────────────────────── */}
+        {/* sonuçlar */}
         {analysisResult && summary && (
           <View style={styles.resultsContainer}>
             <View style={styles.resultsDivider}>
@@ -520,7 +520,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── NASIL ÇALIŞIR? — app.py'deki üç adım bölümü ───────── */}
+        {/* nasıl çalışır? app.py'deki üç adım bölümü */}
         {!analysisResult && (
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>{T.how_title}</Text>
@@ -551,7 +551,7 @@ export default function HomeScreen() {
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────
+// ----- stiller -----
 
 const styles = StyleSheet.create({
   container: {
@@ -559,9 +559,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgPage,
   },
 
-  // Başlık ortak bileşende (src/components/AppHeader.tsx)
+  // başlık ortak bileşende (src/components/AppHeader.tsx)
 
-  // ── HERO — app.py ana sayfasındaki tanıtım kartı ──
+  // hero
   hero: {
     backgroundColor: COLORS.bgCard,
     borderWidth: 1,
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSoft,
   },
 
-  // ── KPI kartları ──
+  // KPI kartları
   kpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
 
-  // ── Güven eşiği kaydırıcısı ──
+  // güven eşiği slider'ı
   confHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
-  // ── Üç adım bölümü ──
+  // üç adım bölümü
   stepRow: {
     flexDirection: 'row',
     gap: 12,
@@ -1092,7 +1092,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Treatment Items — renkli ince sol kenarlı, emojisiz blok
+  // tedavi maddeleri, sol kenarı renkli ince blok
   treatmentItem: {
     marginBottom: 14,
     paddingLeft: 12,

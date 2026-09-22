@@ -5,7 +5,7 @@ import {
   ANALYSIS_MODEL,
 } from '../constants/config';
 
-// ─── Type Definitions ────────────────────────────────────────────────
+// ----- tipler -----
 
 export interface Detection {
   class_name: string;
@@ -32,10 +32,9 @@ export interface AnalysisSummary {
 export interface AnalysisResult {
   success: boolean;
   detections: Detection[];
-  // Kutucuklu (bounding box) teşhis görselinin tam data URI'si
-  // (data:image/jpeg;base64,...)
+  // kutucuklu görselin tam data uri'si (data:image/jpeg;base64,...)
   image_base64: string;
-  // Geriye dönük uyumluluk için korunan eski anahtar
+  // eski anahtar, silmedim çünkü eski sürümler hâlâ bunu okuyor
   result_image_base64?: string;
   summary: AnalysisSummary;
 }
@@ -70,12 +69,12 @@ export interface HistoryDeleteResult {
   message?: string;
 }
 
-// ─── Hata tipi ───────────────────────────────────────────────────────
+// ----- hata tipi -----
 
 /**
- * Ağ/sunucu hatalarını dilden bağımsız bir `code` ile taşır; ekranlar bu kodu
- * seçili dile göre metne çevirir (bkz. constants/i18n.ts → apiErrorText).
- * `message` alanı Türkçe varsayılan metni tutmaya devam eder.
+ * Hataları dilden bağımsız bir `code` ile taşıyorum, ekranlar bu koda bakıp
+ * kendi dilindeki metni basıyor (bkz. constants/i18n.ts, apiErrorText).
+ * `message` alanında yine türkçe varsayılan metin duruyor.
  */
 export type ApiErrorCode = 'network' | 'timeout' | 'server';
 
@@ -89,7 +88,7 @@ export class ApiError extends Error {
   }
 }
 
-// ─── API Client ──────────────────────────────────────────────────────
+// ----- api client -----
 
 const apiClient = axios.create({
   timeout: 60000,
@@ -98,12 +97,12 @@ const apiClient = axios.create({
   },
 });
 
-// Anlık ağ kopmalarına (telefon Wi-Fi güç tasarrufu, ilk isteğin yavaşlığı)
-// karşı dayanıklılık: SADECE yanıt alınamayan ağ hatalarında birkaç kez
-// yeniden dener. Sunucudan HTTP yanıtı geldiyse (4xx/5xx) tekrar denemez.
+// telefonun wifi'si uyuyunca ya da ilk istek yavaş olunca bağlantı kopabiliyor.
+// sadece sunucudan hiç cevap gelmeyen durumlarda birkaç kez tekrar deniyoruz.
+// 4xx/5xx döndüyse sunucu ayakta demektir, tekrar denemeye gerek yok.
 function isTransientNetworkError(error: any): boolean {
-  // error.response varsa sunucu yanıt vermiştir → yeniden deneme.
-  // ECONNABORTED (zaman aşımı) da yeniden denenmez; kullanıcıya bilgi verilir.
+  // error.response doluysa sunucu cevap vermiş, tekrar deneme.
+  // ECONNABORTED (timeout) da tekrar denenmiyor, kullanıcıya haber veriyoruz.
   return !error?.response && error?.code !== 'ECONNABORTED';
 }
 
@@ -128,7 +127,7 @@ async function withRetry<T>(
   throw lastError;
 }
 
-// ─── Login ───────────────────────────────────────────────────────────
+// ----- login -----
 
 export async function login(
   username: string,
@@ -167,7 +166,7 @@ export async function login(
   }
 }
 
-// ─── Register ────────────────────────────────────────────────────────
+// ----- register -----
 
 export async function register(
   username: string,
@@ -205,7 +204,7 @@ export async function register(
   }
 }
 
-// ─── History ─────────────────────────────────────────────────────────
+// ----- history -----
 
 export async function fetchHistory(username: string): Promise<HistoryResult> {
   try {
@@ -272,20 +271,20 @@ export async function deleteHistoryRecords(
   }
 }
 
-// ─── Analyze Image ───────────────────────────────────────────────────
+// ----- analiz -----
 
 export async function analyzeImage(
   imageUri: string,
   confidence?: number,
   model: string = ANALYSIS_MODEL,
-  // Analizi geçmişe kaydetmek için: kullanıcı adı ve kayıt metinlerinin dili
+  // geçmişe kaydedebilmek için kullanıcı adı ve dil de gidiyor
   username?: string,
   lang: 'tr' | 'en' = 'tr'
 ): Promise<AnalysisResult> {
   try {
     const formData = new FormData();
 
-    // Extract filename and determine MIME type
+    // dosya adından uzantıyı alıp mime type'ı buluyoruz
     const uriParts = imageUri.split('/');
     const filename = uriParts[uriParts.length - 1] || 'photo.jpg';
     const extension = filename.split('.').pop()?.toLowerCase() || 'jpg';
@@ -300,24 +299,24 @@ export async function analyzeImage(
     };
     const mimeType = mimeTypes[extension] || 'image/jpeg';
 
-    // Append the image file
+    // görseli ekle
     formData.append('file', {
       uri: imageUri,
       name: filename,
       type: mimeType,
     } as any);
 
-    // Append confidence threshold
+    // güven eşiği
     formData.append('confidence', String(confidence || DEFAULT_CONFIDENCE));
 
-    // Analiz için kullanılacak modeli parametre olarak gönder
-    // (plantdoc_150epoch.pt). Backend bu alanı okumasa da istek bozulmaz.
+    // hangi modelle analiz edilecek. backend şu an bunu okumuyor ama
+    // göndermek bir şeyi bozmuyor, ileride lazım olur.
     formData.append('model', model);
 
-    // Dil, kutucuk etiketlerinin ve geçmiş kaydının dilini belirler.
+    // dil hem kutucuk etiketlerini hem geçmiş kaydını etkiliyor
     formData.append('lang', lang);
 
-    // Kullanıcı adı gönderilirse backend sonucu analiz_gecmisi tablosuna yazar.
+    // kullanıcı adı gönderilirse backend sonucu analiz_gecmisi'ne yazıyor
     if (username) {
       formData.append('username', username);
     }

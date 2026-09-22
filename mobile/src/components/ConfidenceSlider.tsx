@@ -1,8 +1,6 @@
-// ─────────────────────────────────────────────────────────────────────
-// Güven eşiği kaydırıcısı — app.py'deki st.slider(0.00–1.00, step 0.01)
-// karşılığı. Parmakla sürüklenir; ray üzerine dokununca da o değere atlar.
-// Ek bağımlılık gerektirmemesi için PanResponder ile elle yazıldı.
-// ─────────────────────────────────────────────────────────────────────
+// Güven eşiği slider'ı, app.py'deki st.slider(0.00-1.00, step 0.01) karşılığı.
+// Parmakla sürükleniyor, raya dokununca da o değere atlıyor.
+// Ekstra kütüphane yüklemeyeyim diye PanResponder ile elle yazdım.
 
 import React, { useMemo, useRef, useState } from 'react';
 import {
@@ -34,7 +32,7 @@ export default function ConfidenceSlider({
   disabled = false,
 }: Props) {
   const [trackWidth, setTrackWidth] = useState(0);
-  // Ray'in ekrandaki sol kenarı — sürükleme sırasında mutlak x'ten çıkarılır.
+  // ray'in ekrandaki sol kenarı. sürükleme sırasında mutlak x'ten çıkarıyoruz.
   const trackOriginX = useRef(0);
   const widthRef = useRef(0);
   const disabledRef = useRef(disabled);
@@ -43,7 +41,7 @@ export default function ConfidenceSlider({
   const clampToStep = (raw: number): number => {
     const clamped = Math.min(max, Math.max(min, raw));
     const stepped = Math.round((clamped - min) / step) * step + min;
-    // Kayan nokta artıklarını temizle (0.30000000000000004 → 0.3)
+    // 0.30000000000000004 gibi küsuratları temizle
     return Math.round(stepped * 1000) / 1000;
   };
 
@@ -59,7 +57,7 @@ export default function ConfidenceSlider({
       PanResponder.create({
         onStartShouldSetPanResponder: () => !disabledRef.current,
         onMoveShouldSetPanResponder: () => !disabledRef.current,
-        // Sürükleme sırasında ScrollView'ın araya girip kaydırmasını engelle
+        // sürüklerken ScrollView araya girip sayfayı kaydırmasın
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (evt) => {
           const { pageX, locationX } = evt.nativeEvent;
@@ -70,7 +68,7 @@ export default function ConfidenceSlider({
           emitFromX(evt.nativeEvent.pageX - trackOriginX.current);
         },
       }),
-    // onChange her render'da yeniden üretilmediği sürece tek kurulum yeterli
+    // onChange her render'da yeniden üretilmediği sürece tek kurulum yetiyor
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
@@ -87,7 +85,7 @@ export default function ConfidenceSlider({
 
   return (
     <View style={styles.wrapper}>
-      {/* Dokunma alanı ray'den yüksek tutulur ki parmakla yakalaması kolay olsun */}
+      {/* dokunma alanını raydan yüksek tuttum, parmakla yakalaması kolay olsun */}
       <View
         style={[styles.touchArea, disabled && styles.disabled]}
         onLayout={onLayout}

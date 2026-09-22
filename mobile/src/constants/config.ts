@@ -1,6 +1,5 @@
-// API sunucu adresi — geliştirme ortamı için localhost
-// Gerçek cihazda test için bilgisayarınızın yerel IP adresini kullanın
-// Örnek: export const API_BASE_URL = 'http://192.168.1.100:8000';
+// API adresi. gerçek telefonda test ederken localhost çalışmıyor,
+// bilgisayarın yerel IP'sini yazmak lazım (örn: http://192.168.1.100:8000)
 export const API_BASE_URL = 'http://192.168.1.176:8000';
 
 export const API_ENDPOINTS = {
@@ -13,7 +12,7 @@ export const API_ENDPOINTS = {
 
 export const DEFAULT_CONFIDENCE = 0.25;
 
-// Analiz için kullanılacak YOLOv8 model dosyası.
-// Backend (api_server.py) şu an modeli global yüklüyor; bu parametre
-// isteğe eklenir ki ileride backend model seçimini destekleyebilsin.
+// Analizde kullanılacak model dosyası.
+// backend şu an modeli global yüklüyor ama ileride seçim eklersek diye
+// isteğe bu alanı da koyuyorum.
 export const ANALYSIS_MODEL = 'plantdoc_150epoch.pt';

@@ -1,7 +1,5 @@
-// ─────────────────────────────────────────────────────────────────────
-// Uygulama başlığı — app.py'deki koyu yeşil admin-panel şeridinin
-// karşılığı. Ana sayfa ve geçmiş sayfası aynı başlığı paylaşır.
-// ─────────────────────────────────────────────────────────────────────
+// Uygulamanın üst başlığı, app.py'deki koyu yeşil şeridin aynısı.
+// Ana sayfa ve geçmiş sayfası aynı başlığı kullanıyor.
 
 import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';

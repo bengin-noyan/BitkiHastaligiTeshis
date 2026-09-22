@@ -1,22 +1,22 @@
 """
-Modelin karışıklık noktalarını (class confusion) ölçer.
+Model hangi sınıfı hangisiyle karıştırıyor diye bakmak için yazdım.
 
-Çalıştır:  python degerlendir.py
+çalıştırmak için:  python degerlendir.py
 
-Üretilenler (runs/detect/<val-klasoru>/ içinde):
-  - confusion_matrix.png            : hangi sınıf hangi sınıfla karışıyor
-  - confusion_matrix_normalized.png : aynısı ama satır bazında yüzdelik (okuması daha kolay)
-  - sınıf-bazlı mAP tablosu terminale yazılır (düşük olanlar problemli sınıflar)
+runs/detect/<val-klasoru>/ içine şunlar çıkıyor:
+  - confusion_matrix.png            : hangi sınıf hangi sınıfla karışmış
+  - confusion_matrix_normalized.png : aynısının yüzdelik hali, okuması daha kolay
+  - sınıf bazlı mAP tablosu da terminale yazılıyor, düşük olanlar sorunlu demek
 """
 import os
 from ultralytics import YOLO
 
-# --- Ayarlar (gerekirse düzenle) ---
+# ayarlar (gerekirse burayı değiştir)
 MODEL = "plantdoc_150epoch.pt"
 DATA = "datasets/PlantDoc/plantdoc.v7i.yolov8/data.yaml"
 SPLIT = "test"   # "test" yoksa "val" yap
 IMGSZ = 640
-# -----------------------------------
+# ------------------------------
 
 if __name__ == "__main__":
     if not os.path.exists(MODEL):
@@ -27,7 +27,7 @@ if __name__ == "__main__":
 
     model = YOLO(MODEL)
 
-    # split="test" bazı veri setlerinde tanımlı olmayabilir; yoksa val'e düş
+    # bazı veri setlerinde test split'i yok, o zaman val'e düşüyoruz
     try:
         metrics = model.val(data=DATA, split=SPLIT, imgsz=IMGSZ, plots=True)
     except Exception as e:
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     print(f"mAP50    : {metrics.box.map50:.4f}")
     print(f"mAP50-95 : {metrics.box.map:.4f}")
 
-    # Sınıf-bazlı mAP50 — düşükten yükseğe sırala (en problemliler üstte)
+    # sınıf bazlı mAP50, düşükten yükseğe sıralı (en sorunlular en üstte)
     print("\n" + "=" * 60)
     print("SINIF BAZLI mAP50 (dusuk = problemli sinif)")
     print("=" * 60)
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     for cls_idx, ap50 in per_class:
         print(f"  {ap50:6.3f}   {names[int(cls_idx)]}")
 
-    # Çıktı klasörünü göster
+    # çıktıların nereye kaydedildiğini yaz
     print("\n" + "=" * 60)
     print(f"Gorseller kaydedildi: {metrics.save_dir}")
     print("  -> confusion_matrix.png  ve  confusion_matrix_normalized.png")

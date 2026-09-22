@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Bitki Hastalığı Teşhis - FastAPI Backend Sunucusu
-==================================================
-YOLOv8 modeli ile bitki hastalığı tespiti yapan REST API sunucusu.
-Firebase Firestore'dan tedavi bilgileri, SQLite'dan kullanıcı doğrulama sağlar.
+Mobil uygulamanın backend'i.
+Streamlit tarafıyla (app.py) aynı modeli ve aynı veritabanını kullanıyor,
+burası sadece dışarı REST olarak açıyor.
 """
 
 import base64
@@ -22,25 +21,23 @@ from PIL import Image
 from pydantic import BaseModel
 from ultralytics import YOLO
 
-# ──────────────────────────────────────────────
-# Uygulama yapılandırması
-# ──────────────────────────────────────────────
+# ---------- ayarlar ----------
 
-# Proje kök dizini (bu dosyanın bulunduğu klasör)
+# bu dosyanın durduğu klasör
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Model ve veritabanı dosya yolları
+# dosya yolları
 MODEL_PATH = os.path.join(BASE_DIR, "plantdoc_150epoch.pt")
 FIREBASE_KEY_PATH = os.path.join(BASE_DIR, "firebase_key.json")
 SQLITE_DB_PATH = os.path.join(BASE_DIR, "tarimsal_analiz.db")
 
-# Hastalık anahtar kelimeleri — sınıf adlarında bunlar aranır
+# sınıf adının içinde bunlardan biri geçiyorsa bitki hasta demektir
 DISEASE_KEYWORDS = [
     "scab", "rust", "mold", "virus", "spot",
     "blight", "curl", "rot", "mildew", "scorch",
 ]
 
-# İngilizce → Türkçe sınıf adı sözlüğü
+# model ingilizce isim veriyor, türkçeye burada çeviriyoruz
 CLASS_TR = {
     "apple": "Elma", "tomato": "Domates", "grape": "Üzüm",
     "corn": "Mısır", "potato": "Patates", "cherry": "Kiraz",
@@ -53,18 +50,16 @@ CLASS_TR = {
     "mold": "Küf", "mildew": "Külleme", "rot": "Çürüklük",
     "early": "Erken", "late": "Geç", "black": "Siyah",
     "bacterial": "Bakteriyel", "mosaic": "Mozaik",
-    # app.py'deki CLASS_TR ile eşitlenen ek karşılıklar
+    # bunları sonradan ekledim, app.py'dekiyle aynı olması lazım
     "yellow": "Sarı", "blueberry": "Yaban Mersini", "gray": "Gri",
     "soyabean": "Soya Fasulyesi", "septoria": "Septoria",
     "two": "İki", "spotted": "Noktalı", "spider": "Örümcek",
     "mites": "Akarı",
-    # Boş karşılık = etikette atlanır (app.py ile aynı davranış)
+    # bilerek boş, etikete yazdırmak istemiyoruz
     "powdery": "",
 }
 
-# ──────────────────────────────────────────────
-# FastAPI uygulaması oluşturma
-# ──────────────────────────────────────────────
+# ---------- FastAPI ----------
 
 app = FastAPI(
     title="Bitki Hastalığı Teşhis API",
@@ -72,7 +67,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Geliştirme ortamı için CORS — tüm kaynaklara izin ver
+# CORS şimdilik herkese açık, geliştirirken uğraşmayalım diye
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -81,34 +76,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ──────────────────────────────────────────────
-# Global değişkenler (başlangıçta yüklenir)
-# ──────────────────────────────────────────────
+# startup'ta doldurulan global'ler
 
 model: Optional[YOLO] = None  # YOLOv8 modeli
 db_firestore = None            # Firestore istemcisi
 
 
-# ──────────────────────────────────────────────
-# Başlangıç olayı — model ve bağlantıları yükle
-# ──────────────────────────────────────────────
+# ---------- sunucu açılırken ----------
 
 @app.on_event("startup")
 def startup_event():
-    """Sunucu başlarken modeli ve Firebase bağlantısını hazırla."""
+    """Model ve Firebase bağlantısı bir kere burada kuruluyor."""
     global model, db_firestore
 
-    # --- YOLOv8 Modelini Yükle ---
+    # modeli yükle
     if not os.path.exists(MODEL_PATH):
         print(f"[UYARI] Model dosyası bulunamadı: {MODEL_PATH}")
     else:
         model = YOLO(MODEL_PATH)
         print(f"[BİLGİ] YOLOv8 modeli yüklendi: {MODEL_PATH}")
 
-        # --- Model Isıtma (warm-up) ---
-        # İlk gerçek isteğin yavaş olmaması için, gerçek analizle aynı çözünürlükte
-        # (imgsz=800) sahte bir tahmin çalıştırıp modeli hazır hale getir.
-        # Doğruluk üzerinde etkisi yoktur; yalnızca ilk çıkarım gecikmesini önler.
+        # ilk analiz çok yavaş açılıyordu, o yüzden boş bir görselle bir kere
+        # çalıştırıyorum. imgsz gerçek analizle aynı olmazsa ısınma işe yaramıyor.
         try:
             warmup_image = Image.new("RGB", (800, 800), (0, 0, 0))
             model.predict(source=warmup_image, imgsz=800, verbose=False)
@@ -116,7 +105,7 @@ def startup_event():
         except Exception as e:
             print(f"[UYARI] Model ısıtma başarısız (kritik değil): {e}")
 
-    # --- Firebase Admin SDK Başlat ---
+    # firebase
     if not os.path.exists(FIREBASE_KEY_PATH):
         print(f"[UYARI] Firebase anahtar dosyası bulunamadı: {FIREBASE_KEY_PATH}")
     else:
@@ -129,9 +118,7 @@ def startup_event():
             print(f"[HATA] Firebase başlatılamadı: {e}")
 
 
-# ──────────────────────────────────────────────
-# Pydantic modelleri
-# ──────────────────────────────────────────────
+# ---------- request / response modelleri ----------
 
 class LoginRequest(BaseModel):
     """Giriş isteği için veri modeli."""
@@ -186,9 +173,7 @@ class HistoryDeleteResponse(BaseModel):
     message: str = ""
 
 
-# ──────────────────────────────────────────────
-# Yardımcı fonksiyonlar
-# ──────────────────────────────────────────────
+# ---------- yardımcı fonksiyonlar ----------
 
 def get_sqlite_connection() -> sqlite3.Connection:
     """SQLite veritabanına bağlantı aç ve döndür."""
@@ -199,12 +184,12 @@ def get_sqlite_connection() -> sqlite3.Connection:
 
 def translate_class_name(class_name: str) -> str:
     """
-    İngilizce sınıf adını Türkçeye çevir.
-    Örnek: 'Tomato leaf bacterial spot' → 'Domates Yaprağı Bakteriyel Lekesi'
+    İngilizce sınıf adını türkçeye çevirir.
+    örnek: 'Tomato leaf bacterial spot' -> 'Domates Yaprağı Bakteriyel Lekesi'
     """
     words = class_name.lower().replace("_", " ").split()
-    # Boş karşılığı olan kelimeler (ör. 'powdery') atlanır — app.py'deki
-    # sinif_ismi_ceviri() ile birebir aynı davranış.
+    # karşılığı boş olan kelimeleri (powdery gibi) hiç eklemiyoruz,
+    # app.py'deki sinif_ismi_ceviri de aynısını yapıyor
     translated_words = [
         tr for w in words if (tr := CLASS_TR.get(w, w.capitalize()))
     ]
@@ -213,11 +198,11 @@ def translate_class_name(class_name: str) -> str:
 
 def draw_annotated_image(result, lang: str = "tr"):
     """
-    Tespit kutucuklarını app.py'deki analiz_gorseli_ciz() ile aynı biçimde çizer:
-    etiket seçili dilde ("Domates Yaprağı Erken Yanıklık" / "Tomato leaf late blight")
-    ve güven skoru yüzde olarak ("%94" / "94%"). BGR bir numpy dizisi döndürür.
+    Kutucukları app.py'deki analiz_gorseli_ciz ile aynı şekilde çiziyor:
+    etiket seçili dilde, güven skoru da yüzde olarak (%94 / 94%).
+    Geriye BGR numpy array dönüyor.
     """
-    # Import fonksiyon içinde: ultralytics'in tembel yüklenmesini bozmamak için.
+    # import'u burada bırakıyorum, yukarı alınca sunucu açılışı yavaşlıyor
     from ultralytics.utils.plotting import Annotator, colors
 
     is_tr = lang != "en"
@@ -228,7 +213,8 @@ def draw_annotated_image(result, lang: str = "tr"):
         else dict(names)
     )
 
-    # example= Türkçe karakter içerdiğinde Annotator otomatik Unicode (PIL) moduna geçer.
+    # example'a türkçe karakter verince Annotator PIL moduna geçiyor,
+    # yoksa ş ğ ü harfleri bozuk çıkıyor
     annotator = Annotator(result.orig_img.copy(), example=str(labels))
 
     boxes = result.boxes
@@ -245,8 +231,8 @@ def draw_annotated_image(result, lang: str = "tr"):
 
 def extract_disease_keyword(class_name: str) -> Optional[str]:
     """
-    Sınıf adından hastalık anahtar kelimesini çıkar.
-    Örnek: 'Tomato leaf bacterial spot' → 'spot'
+    Sınıf adının içinden hastalık kelimesini bulur.
+    örnek: 'Tomato leaf bacterial spot' -> 'spot'
     """
     lower_name = class_name.lower()
     for keyword in DISEASE_KEYWORDS:
@@ -257,8 +243,8 @@ def extract_disease_keyword(class_name: str) -> Optional[str]:
 
 def fetch_treatment_from_firestore(disease_keyword: str) -> dict:
     """
-    Firestore'dan hastalık tedavi bilgilerini getir.
-    Her hastalık belgesi TR ve EN dil verisi içerir.
+    Firestore'dan tedavi bilgisini çekiyor.
+    Her hastalık dokümanında TR ve EN diye iki alan var.
     """
     treatment_tr = {"ilac": "", "sonuc": "", "ekonomi": ""}
     treatment_en = {"ilac": "", "sonuc": "", "ekonomi": ""}
@@ -273,7 +259,7 @@ def fetch_treatment_from_firestore(disease_keyword: str) -> dict:
         if doc.exists:
             data = doc.to_dict()
 
-            # Türkçe tedavi bilgileri
+            # türkçe alan
             tr_data = data.get("TR", {})
             treatment_tr = {
                 "ilac": tr_data.get("ilac", ""),
@@ -281,7 +267,7 @@ def fetch_treatment_from_firestore(disease_keyword: str) -> dict:
                 "ekonomi": tr_data.get("ekonomi", ""),
             }
 
-            # İngilizce tedavi bilgileri
+            # ingilizce alan
             en_data = data.get("EN", {})
             treatment_en = {
                 "ilac": en_data.get("ilac", ""),
@@ -297,14 +283,12 @@ def fetch_treatment_from_firestore(disease_keyword: str) -> dict:
     return {"treatment_tr": treatment_tr, "treatment_en": treatment_en}
 
 
-# ──────────────────────────────────────────────
-# POST /login — Kullanıcı girişi
-# ──────────────────────────────────────────────
+# ---------- POST /login ----------
 
 @app.post("/login", response_model=LoginResponse)
 def login(request: LoginRequest):
     """
-    SQLite veritabanından kullanıcı adı ve şifre doğrulaması yapar.
+    Kullanıcı adı + şifreyi SQLite'tan kontrol ediyor.
     Tablo: kullanicilar (id, kullanici_adi, sifre, kayit_tarihi)
     """
     try:
@@ -327,15 +311,13 @@ def login(request: LoginRequest):
         return LoginResponse(success=False, username="")
 
 
-# ──────────────────────────────────────────────
-# POST /register — Yeni kullanıcı kaydı
-# ──────────────────────────────────────────────
+# ---------- POST /register ----------
 
 @app.post("/register", response_model=RegisterResponse)
 def register(request: RegisterRequest):
     """
-    Yeni kullanıcıyı SQLite'a ekler (app.py'deki 'Kayıt Ol' sekmesiyle aynı mantık).
-    Kullanıcı adı küçük harfe çevrilerek saklanır; aynı ad varsa hata döner.
+    Yeni kullanıcıyı SQLite'a ekliyor, app.py'deki Kayıt Ol sekmesiyle aynı iş.
+    Kullanıcı adını küçük harfe çeviriyorum, aynısı varsa zaten IntegrityError atıyor.
     """
     kullanici_adi = request.username.strip().lower()
     sifre = request.password.strip()
@@ -362,9 +344,7 @@ def register(request: RegisterRequest):
         return RegisterResponse(success=False, message="Kayıt sırasında bir hata oluştu.")
 
 
-# ──────────────────────────────────────────────
-# Analiz geçmişi — kaydetme yardımcı fonksiyonu
-# ──────────────────────────────────────────────
+# ---------- analiz geçmişine kayıt ----------
 
 def save_analysis_to_history(
     username: str,
@@ -376,8 +356,8 @@ def save_analysis_to_history(
     confidence_scores: list,
 ) -> None:
     """
-    Analiz sonucunu analiz_gecmisi tablosuna yazar. Metinler app.py'deki
-    kayıt biçimiyle aynı tutulur ki web ve mobil aynı listeyi paylaşsın.
+    Sonucu analiz_gecmisi tablosuna yazıyor. Yazdığımız metinler app.py ile
+    aynı formatta olmalı yoksa web ve mobilde liste farklı görünüyor.
     """
     is_tr = lang != "en"
 
@@ -421,15 +401,13 @@ def save_analysis_to_history(
         print(f"[HATA] Analiz geçmişe kaydedilemedi: {e}")
 
 
-# ──────────────────────────────────────────────
-# GET /history — Kullanıcının geçmiş analizleri
-# ──────────────────────────────────────────────
+# ---------- GET /history ----------
 
 @app.get("/history", response_model=HistoryResponse)
 def history(username: str):
     """
-    Yalnızca ilgili kullanıcının kayıtlarını, en yeniden eskiye döndürür
-    (app.py'deki veri izolasyonu kuralıyla aynı).
+    Sadece o kullanıcının kayıtlarını yeniden eskiye doğru döndürüyor.
+    (app.py'de de aynı mantık var, başkasının kaydı görünmesin)
     """
     kullanici = username.strip().lower()
     if not kullanici:
@@ -463,13 +441,11 @@ def history(username: str):
         return HistoryResponse(success=False, message="Kayıtlar okunamadı.")
 
 
-# ──────────────────────────────────────────────
-# POST /history/delete — Seçili kayıtları sil
-# ──────────────────────────────────────────────
+# ---------- POST /history/delete ----------
 
 @app.post("/history/delete", response_model=HistoryDeleteResponse)
 def history_delete(request: HistoryDeleteRequest):
-    """Kayıtları siler; kullanıcı adı koşulu sayesinde başkasının kaydı silinemez."""
+    """Kayıt siler. WHERE'e kullanici_adi de koydum, başkasının kaydını silemesin."""
     kullanici = request.username.strip().lower()
     if not kullanici or not request.ids:
         return HistoryDeleteResponse(success=False, message="Silinecek kayıt seçilmedi.")
@@ -492,9 +468,7 @@ def history_delete(request: HistoryDeleteRequest):
         return HistoryDeleteResponse(success=False, message="Kayıtlar silinemedi.")
 
 
-# ──────────────────────────────────────────────
-# POST /analyze — Görüntü analizi
-# ──────────────────────────────────────────────
+# ---------- POST /analyze ----------
 
 @app.post("/analyze")
 async def analyze(
@@ -504,31 +478,30 @@ async def analyze(
     lang: str = Form("tr", description="Kayıt metinlerinin dili: tr | en"),
 ):
     """
-    Yüklenen bitki görselini YOLOv8 modeli ile analiz eder.
-    Tespit edilen hastalıklar için Firestore'dan tedavi önerileri getirir.
+    Gelen görseli modelden geçirip sonucu döndürüyor.
+    Hastalık bulunursa Firestore'dan tedavi bilgisini de ekliyor.
     """
-    # Model yüklü mü kontrol et
+    # model yüklenmediyse devam etmenin anlamı yok
     if model is None:
         return {"success": False, "error": "Model yüklenemedi. Sunucu yapılandırmasını kontrol edin."}
 
     try:
-        # --- Görseli oku ve PIL Image'a dönüştür ---
+        # görseli oku
         image_bytes = await file.read()
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
-        # --- YOLOv8 ile tahmin yap ---
+        # tahmin
         results = model.predict(source=image, conf=confidence, imgsz=800)
 
-        # --- Tespit edilen sınıfları ve güven skorlarını al ---
+        # bulunan sınıflar ve güven skorları
         detected_classes = [model.names[int(c)] for c in results[0].boxes.cls]
         confidence_scores = [float(c) for c in results[0].boxes.conf]
 
-        # --- İşaretlenmiş görseli base64'e dönüştür ---
-        # plot() etiketleri İngilizce ve güveni 0.94 gibi ondalık basar; app.py ile
-        # aynı görünüm için kutucuklar Annotator ile elle çizilir: seçili dilde ad
-        # + yüzde biçiminde güven skoru.
+        # kutucuklu görseli base64'e çevir
+        # hazır plot() kullanmadım, etiketi ingilizce ve 0.94 gibi basıyor,
+        # bize %94 lazımdı
         annotated_bgr = draw_annotated_image(results[0], lang)
-        annotated_rgb = annotated_bgr[:, :, ::-1]  # BGR → RGB
+        annotated_rgb = annotated_bgr[:, :, ::-1]  # BGR -> RGB
         annotated_image = Image.fromarray(annotated_rgb)
 
         buffer = io.BytesIO()
@@ -537,7 +510,7 @@ async def analyze(
         image_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
         result_image_b64 = f"data:image/jpeg;base64,{image_base64}"
 
-        # --- Tespit listesini oluştur ---
+        # tespit listesi
         detections = []
         for cls_name, conf_score in zip(detected_classes, confidence_scores):
             detections.append({
@@ -546,14 +519,14 @@ async def analyze(
                 "confidence": round(conf_score, 4),
             })
 
-        # --- Bitki türlerini belirle (sınıf adının ilk kelimesi) ---
+        # bitki türü = sınıf adının ilk kelimesi
         plant_types = list({
             cls.split()[0] for cls in detected_classes if cls.split()
         })
         plant_types_tr = [CLASS_TR.get(p.lower(), p) for p in plant_types]
 
-        # --- Hastalıkları tespit et ---
-        sick_detections = []   # Hastalık içeren tespitler
+        # hastalıklı olanları ayıkla
+        sick_detections = []   # hastalıklı tespitlerin skorları
         disease_keywords_found = set()
 
         for cls_name, conf_score in zip(detected_classes, confidence_scores):
@@ -562,34 +535,33 @@ async def analyze(
                 sick_detections.append(conf_score)
                 disease_keywords_found.add(keyword)
 
-        # --- Sağlıklı mı kontrol et ---
+        # hiç hastalık yoksa sağlıklı sayıyoruz
         is_healthy = len(sick_detections) == 0
 
-        # --- Risk skoru hesapla ---
+        # risk skoru, 95'i geçmesin diye min koydum
         if sick_detections:
             avg_conf = sum(sick_detections) / len(sick_detections)
             risk_score = min(int(len(sick_detections) * 15 * avg_conf) + 20, 95)
         else:
             risk_score = 0
 
-        # --- Her benzersiz hastalık için tedavi bilgisi getir ---
+        # her hastalık için tedavi bilgisi çek
         diseases_info = []
         for keyword in sorted(disease_keywords_found):
-            # Hastalık adını oluştur (keyword'ün geçtiği ilk sınıf adından)
-            disease_display_name = keyword  # varsayılan
+            # hastalık adını, keyword'ün geçtiği ilk sınıf adından çıkar
+            disease_display_name = keyword  # bulamazsa keyword kalsın
             for cls_name in detected_classes:
                 if keyword in cls_name.lower():
-                    # Sınıf adından bitki adını çıkar, geri kalanı hastalık adı
                     parts = cls_name.lower().split()
                     if len(parts) > 1:
-                        # İlk kelime bitki adı, geri kalanı hastalık
+                        # ilk kelime bitki adı, kalanı hastalık
                         disease_display_name = " ".join(parts[1:])
                     break
 
-            # Türkçe hastalık adı
+            # türkçesi
             disease_name_tr = translate_class_name(disease_display_name)
 
-            # Firestore'dan tedavi bilgilerini getir
+            # tedavi bilgisi
             treatment = fetch_treatment_from_firestore(keyword)
 
             diseases_info.append({
@@ -599,7 +571,7 @@ async def analyze(
                 "treatment_en": treatment["treatment_en"],
             })
 
-        # --- Analizi geçmişe kaydet (app.py'deki analizi_kaydet ile aynı mantık) ---
+        # geçmişe kaydet (app.py'deki analizi_kaydet ile aynı iş)
         if username:
             save_analysis_to_history(
                 username=username,
@@ -611,14 +583,13 @@ async def analyze(
                 confidence_scores=confidence_scores,
             )
 
-        # --- Yanıt oluştur ---
+        # cevabı hazırla
         response = {
             "success": True,
             "detections": detections,
-            # Mobil uygulamanın kullandığı anahtar — kutucuklu (bounding box)
-            # işaretlenmiş görselin tam data URI'si (data:image/jpeg;base64,...)
+            # mobil bunu okuyor, data:image/jpeg;base64,... şeklinde tam URI
             "image_base64": result_image_b64,
-            # Geriye dönük uyumluluk için mevcut anahtar korunuyor
+            # eski isim de dursun, silince mobilde patlamıştı
             "result_image_base64": result_image_b64,
             "summary": {
                 "plant_types": plant_types,
@@ -639,9 +610,7 @@ async def analyze(
         }
 
 
-# ──────────────────────────────────────────────
-# Sunucu başlatma
-# ──────────────────────────────────────────────
+# ---------- çalıştır ----------
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

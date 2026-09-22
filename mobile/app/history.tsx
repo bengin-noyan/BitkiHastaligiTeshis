@@ -1,8 +1,6 @@
-// ─────────────────────────────────────────────────────────────────────
-// GEÇMİŞ ANALİZLERİM — app.py'deki gecmis_analiz_sayfasi()'nın mobil
-// karşılığı: KPI'lar, bitki dağılımı, sağlık oranı, detaylı kayıt listesi
-// ve toplu silme. Veri izolasyonu backend'de kullanıcı adına göre yapılır.
-// ─────────────────────────────────────────────────────────────────────
+// Geçmiş Analizlerim ekranı, app.py'deki gecmis_analiz_sayfasi()'nın mobil hali.
+// KPI'lar, bitki dağılımı, sağlık oranı, kayıt listesi ve toplu silme var.
+// Hangi kullanıcının kaydı olduğu backend tarafında filtreleniyor.
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
@@ -40,7 +38,7 @@ export default function HistoryScreen() {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
 
-  // ─── Veri çekme ────────────────────────────────────────────────────
+  // ----- veri çekme -----
   const load = useCallback(
     async (isRefresh = false) => {
       if (!username) {
@@ -67,14 +65,14 @@ export default function HistoryScreen() {
     [username, T]
   );
 
-  // Sayfaya her dönüşte tazele — yeni analiz sonrası liste güncel kalsın.
+  // sayfaya her dönüşte tazeliyoruz, yeni analizden sonra liste eski kalmasın
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load])
   );
 
-  // ─── Özet hesaplar (app.py'deki pandas mantığının karşılığı) ───────
+  // ----- özet hesaplar (app.py'de pandas ile yapılan kısım) -----
   const summary = useMemo(() => {
     const total = records.length;
 
@@ -85,7 +83,7 @@ export default function HistoryScreen() {
     const isNoDetection = (text: string) =>
       (text || '').toLowerCase().includes('tespit edilemedi');
 
-    // En sık hastalık — "Sağlıklı" ve "Tespit Edilemedi" hariç
+    // en sık çıkan hastalık. "Sağlıklı" ve "Tespit Edilemedi" sayılmıyor
     const counts = new Map<string, number>();
     records.forEach((r) => {
       const value = r.hastalik_durumu || '';
@@ -101,7 +99,7 @@ export default function HistoryScreen() {
       }
     });
 
-    // Bitki türü dağılımı
+    // bitki türü dağılımı
     const plantCounts = new Map<string, number>();
     records.forEach((r) => {
       const value = r.bitki_turu || (lang === 'tr' ? 'Bilinmiyor' : 'Unknown');
@@ -112,7 +110,7 @@ export default function HistoryScreen() {
       .sort((a, b) => b.count - a.count);
     const plantMax = plants.length > 0 ? plants[0].count : 1;
 
-    // Sağlıklı / enfekte oranı
+    // sağlıklı / enfekte oranı
     const healthy = records.filter((r) =>
       isHealthyText(r.hastalik_durumu)
     ).length;
@@ -121,7 +119,7 @@ export default function HistoryScreen() {
     return { total, mostCommon, plants, plantMax, healthy, infected };
   }, [records, T, lang]);
 
-  // ─── Seçim & silme ─────────────────────────────────────────────────
+  // ----- seçim ve silme -----
   const toggleSelect = (id: number) => {
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -158,7 +156,7 @@ export default function HistoryScreen() {
     ]);
   };
 
-  // Tarih biçimi: "2026-07-28 13:47:56" → "28.07.2026 13:47"
+  // "2026-07-28 13:47:56" -> "28.07.2026 13:47"
   const formatDate = (raw: string): string => {
     if (!raw) return '';
     const [datePart, timePart = ''] = raw.split(' ');
@@ -191,7 +189,7 @@ export default function HistoryScreen() {
           />
         }
       >
-        {/* ── Sayfa başlığı ── */}
+        {/* sayfa başlığı */}
         <View style={styles.pageHead}>
           <View style={styles.tag}>
             <Text style={styles.tagText}>{T.hist_tag}</Text>
@@ -215,7 +213,7 @@ export default function HistoryScreen() {
           </View>
         ) : (
           <>
-            {/* ── KPI'lar ── */}
+            {/* KPI kutuları */}
             <View style={styles.kpiRow}>
               <View style={styles.kpiCard}>
                 <Text style={styles.kpiLabel}>{T.kpi_total}</Text>
@@ -229,7 +227,7 @@ export default function HistoryScreen() {
               </View>
             </View>
 
-            {/* ── Bitki türü dağılımı (yatay bar) ── */}
+            {/* bitki türü dağılımı, yatay bar */}
             <View style={styles.card}>
               <Text style={styles.cardTitle}>{T.chart1_t}</Text>
               <Text style={styles.cardDesc}>{T.chart1_d}</Text>
@@ -251,7 +249,7 @@ export default function HistoryScreen() {
               ))}
             </View>
 
-            {/* ── Sağlık durumu oranı ── */}
+            {/* sağlık durumu oranı */}
             <View style={styles.card}>
               <Text style={styles.cardTitle}>{T.chart2_t}</Text>
               <Text style={styles.cardDesc}>{T.chart2_d}</Text>
@@ -290,7 +288,7 @@ export default function HistoryScreen() {
               </View>
             </View>
 
-            {/* ── Detaylı kayıt listesi ── */}
+            {/* kayıt listesi */}
             <View style={styles.card}>
               <View style={styles.tableHeadRow}>
                 <View style={styles.tableHeadLeft}>
@@ -383,7 +381,7 @@ export default function HistoryScreen() {
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────
+// ----- stiller -----
 
 const styles = StyleSheet.create({
   container: {

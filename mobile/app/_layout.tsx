@@ -23,9 +23,8 @@ export default function RootLayout() {
     Inter_900Black,
   });
 
-  // Fontlar yüklenene kadar sade bir yükleniyor ekranı göster.
-  // (Sistem fontu kullanır; Inter'e HENÜZ referans verilmez ki Android'de
-  // "font not loaded" hatası oluşmasın.)
+  // fontlar yüklenene kadar basit bir yükleniyor ekranı gösteriyoruz.
+  // burada Inter'e referans vermiyorum, android'de "font not loaded" hatası veriyor.
   if (!fontsLoaded) {
     return (
       <View
@@ -43,7 +42,7 @@ export default function RootLayout() {
 
   return (
     <LanguageProvider>
-      {/* Koyu yeşil başlık / fotoğraflı giriş ekranı üzerinde açık renk ikonlar */}
+      {/* koyu yeşil başlık ve giriş ekranının fotoğrafı üstünde ikonlar açık renk olsun */}
       <StatusBar style="light" backgroundColor={COLORS.darkGreen} />
       <Stack
         screenOptions={{

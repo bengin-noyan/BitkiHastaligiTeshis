@@ -19,7 +19,7 @@ import { COLORS, FONTS, SHADOW_TINT } from '../src/constants/theme';
 import { LANG_OPTIONS, format, apiErrorText } from '../src/constants/i18n';
 import { useLanguage } from '../src/context/LanguageContext';
 
-// app.py giriş ekranıyla aynı görseller (assets/ klasöründen kopyalandı)
+// görseller app.py'deki assets klasöründen kopyalandı, ikisi de aynı
 const BG_IMAGE = require('../assets/login_bg.jpg');
 const LOGO = require('../assets/logo_transparent.png');
 
@@ -31,12 +31,12 @@ export default function LoginScreen() {
   const isTR = lang === 'tr';
   const [tab, setTab] = useState<TabKey>('login');
 
-  // Giriş sekmesi
+  // giriş sekmesi
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Kayıt sekmesi
+  // kayıt sekmesi
   const [newUser, setNewUser] = useState('');
   const [newPass, setNewPass] = useState('');
   const [newPass2, setNewPass2] = useState('');
@@ -51,7 +51,7 @@ export default function LoginScreen() {
     setSuccess('');
   };
 
-  // ─── Giriş Yap ─────────────────────────────────────────────────────
+  // ----- giriş yap -----
   const handleLogin = async () => {
     if (!username.trim()) {
       setError(T.err_enter_user);
@@ -83,7 +83,7 @@ export default function LoginScreen() {
     }
   };
 
-  // ─── Kayıt Ol ──────────────────────────────────────────────────────
+  // ----- kayıt ol -----
   const handleRegister = async () => {
     if (!newUser.trim() || !newPass.trim()) {
       setError(T.warn_fill_all);
@@ -106,7 +106,7 @@ export default function LoginScreen() {
         setNewPass('');
         setNewPass2('');
       } else {
-        // Sunucu Türkçe mesaj döner; İngilizce arayüzde yerel metni kullan.
+        // sunucu türkçe mesaj dönüyor, arayüz ingilizceyse kendi metnimizi basıyoruz
         setError(lang === 'tr' ? result.message || T.err_user_taken : T.err_user_taken);
       }
     } catch (err: any) {
@@ -118,7 +118,7 @@ export default function LoginScreen() {
 
   return (
     <ImageBackground source={BG_IMAGE} style={styles.bg} resizeMode="cover">
-      {/* app.py'deki hafif beyaz katman (overlay) — kart ve yazılar okunaklı kalsın */}
+      {/* app.py'deki hafif beyaz katman, üstteki yazılar okunsun diye */}
       <View style={styles.overlay} />
 
       <SafeAreaView style={styles.container}>
@@ -131,7 +131,7 @@ export default function LoginScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* ── DİL SEÇİCİ — web'deki ortalanmış hap kutusunun karşılığı ── */}
+            {/* dil seçici (web'deki ortalanmış hap kutusu) */}
             <View style={styles.langSwitch}>
               {LANG_OPTIONS.map((opt) => (
                 <TouchableOpacity
@@ -155,12 +155,12 @@ export default function LoginScreen() {
               ))}
             </View>
 
-            {/* ── LOGO — arka planın üzerinde serbest yüzer, kutu YOK ── */}
+            {/* logo, arka planın üstünde serbest duruyor */}
             <Image source={LOGO} style={styles.logo} resizeMode="contain" />
 
-            {/* ── BEYAZ GİRİŞ KARTI (app.py .st-key-login_panel) ── */}
+            {/* beyaz giriş kartı (app.py .st-key-login_panel) */}
             <View style={styles.card}>
-              {/* Sekmeler: Giriş Yap / Kayıt Ol */}
+              {/* Giriş Yap / Kayıt Ol sekmeleri */}
               <View style={styles.tabBar}>
                 <TouchableOpacity
                   style={styles.tabItem}
@@ -205,7 +205,7 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Uyarı / bilgi mesajları */}
+              {/* uyarı ve bilgi mesajları */}
               {error !== '' && (
                 <View style={styles.errorContainer}>
                   <Text style={styles.errorText}>{error}</Text>
@@ -255,7 +255,7 @@ export default function LoginScreen() {
                         onSubmitEditing={handleLogin}
                         returnKeyType="go"
                       />
-                      {/* Göster/gizle — web'deki göz düğmesinin karşılığı */}
+                      {/* şifre göster/gizle, webdeki göz butonunun aynısı */}
                       <TouchableOpacity
                         onPress={() => setShowPassword((prev) => !prev)}
                         activeOpacity={0.6}
@@ -367,7 +367,7 @@ export default function LoginScreen() {
                 </>
               )}
 
-              {/* ── ALT İSTATİSTİK HAPLARI (app.py .lp-stats) ── */}
+              {/* alttaki istatistik hapları (app.py .lp-stats) */}
               <View style={styles.statsRow}>
                 <View style={styles.pill}>
                   <Text style={styles.pillText}>
@@ -393,7 +393,7 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* ── TELİF (app.py .lp-footer-note) ── */}
+            {/* telif satırı (app.py .lp-footer-note) */}
             <View style={styles.footerNote}>
               <Text style={styles.footerNoteText}>{T.copyright}</Text>
             </View>
@@ -404,7 +404,7 @@ export default function LoginScreen() {
   );
 }
 
-// ─── Styles — app.py giriş ekranının birebir karşılığı ───────────────
+// ----- stiller (app.py giriş ekranına göre yazıldı) -----
 
 const styles = StyleSheet.create({
   bg: {
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
 
-  // Dil seçici — web'deki ortalanmış, hap görünümlü beyaz kutunun karşılığı
+  // dil seçici, webdeki ortalanmış beyaz hap kutusu
   langSwitch: {
     flexDirection: 'row',
     alignSelf: 'center',
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     color: COLORS.primaryText,
   },
 
-  // Logo — şeffaf zeminli, kutusuz; web'deki drop-shadow'un RN karşılığı
+  // logo şeffaf png, kutusuz. webdeki drop-shadow'un rn karşılığı
   logo: {
     width: '86%',
     height: 118,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  // Beyaz form kartı (.st-key-login_panel)
+  // beyaz form kartı (.st-key-login_panel)
   card: {
     backgroundColor: COLORS.bgCard,
     borderRadius: 20,
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
 
-  // Sekmeler (Streamlit st.tabs görünümü)
+  // sekmeler (st.tabs görünümü)
   tabBar: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     marginBottom: 6,
   },
-  // Açık-gri zemin + belirgin kenarlık (web'deki #eef2f7 / #cbd5e1)
+  // açık gri zemin + kenarlık (webdeki #eef2f7 / #cbd5e1)
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  // İstatistik hapları
+  // istatistik hapları
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
   },
 
-  // Telif satırı — beyaz hap, arka planın üstünde okunaklı
+  // telif satırı, arka planın üstünde okunsun diye beyaz hap
   footerNote: {
     alignSelf: 'center',
     marginTop: 16,

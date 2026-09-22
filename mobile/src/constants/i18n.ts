@@ -1,8 +1,6 @@
-// ─────────────────────────────────────────────────────────────────────
-// Çoklu dil sözlüğü — app.py'deki LANGS yapısının mobil karşılığı.
-// Anahtar adları mümkün olduğunca app.py ile aynı tutuldu ki iki taraf
-// birlikte güncellenebilsin.
-// ─────────────────────────────────────────────────────────────────────
+// Çeviri sözlüğü, app.py'deki LANGS'ın mobil hali.
+// Anahtar isimlerini app.py ile aynı tutmaya çalıştım, ikisini birlikte
+// güncellemek kolay olsun diye.
 
 export type Lang = 'tr' | 'en';
 
@@ -12,7 +10,7 @@ export const LANG_OPTIONS: { key: Lang; label: string }[] = [
 ];
 
 const tr = {
-  // ── Giriş ekranı ──
+  // giriş ekranı
   lang_label: 'Dil / Language',
   tab_login: 'Giriş Yap',
   tab_register: 'Kayıt Ol',
@@ -47,7 +45,7 @@ const tr = {
   pill_classes: 'Analiz Sınıfı',
   copyright: '© 2026 PlantDetective · Tüm hakları saklıdır',
 
-  // ── Ana ekran (analiz) ──
+  // ana ekran
   header_sub: 'Bitki hastalığı teşhisi & tarımsal verimlilik analizi',
   btn_logout: 'Çıkış',
   logout_title: 'Çıkış',
@@ -70,7 +68,7 @@ const tr = {
   err_gallery: 'Galeri açılırken bir hata oluştu.',
   err_analyze: 'Analiz sırasında beklenmeyen bir hata oluştu.',
 
-  // ── Sonuçlar ──
+  // sonuçlar
   results_title: 'Analiz Sonuçları',
   res_plant: 'Tespit Edilen Bitki',
   no_plant: 'Bitki türü tespit edilemedi',
@@ -89,11 +87,11 @@ const tr = {
   no_info: 'Bilgi mevcut değil',
   btn_new_analysis: 'Yeni Analiz',
 
-  // ── Navigasyon (app.py sidebar menüsü) ──
+  // menü
   nav_home: 'Ana Sayfa / Analiz',
   nav_history: 'Geçmiş Analizlerim',
 
-  // ── Ana sayfa vitrin bölümü ──
+  // ana sayfadaki tanıtım bölümü
   nav_powered: 'YAPAY ZEKÂ DESTEKLİ',
   main_title: 'Bitki Hastalığı Teşhis Sistemi',
   main_desc:
@@ -117,7 +115,7 @@ const tr = {
   step3_t: 'Raporu İncele',
   step3_d: 'Teşhis, tedavi önerisi ve verim kaybı tahmini anında ekranda.',
 
-  // ── Geçmiş analizler sayfası ──
+  // geçmiş analizler
   hist_tag: 'ANALİZ GEÇMİŞİ',
   hist_title: 'Geçmiş Analizlerim',
   hist_desc:
@@ -149,10 +147,10 @@ const tr = {
   refresh: 'Yenile',
 };
 
-// İngilizce sözlük — anahtarlar Türkçe sözlükle birebir aynı olmak zorunda
-// (TypeScript bunu derleme anında denetler).
+// ingilizce sözlük. anahtarlar türkçedekiyle birebir aynı olmak zorunda,
+// zaten farklı olursa typescript derlerken hata veriyor.
 const en: typeof tr = {
-  // ── Login screen ──
+  // login screen
   lang_label: 'Dil / Language',
   tab_login: 'Sign In',
   tab_register: 'Sign Up',
@@ -187,7 +185,7 @@ const en: typeof tr = {
   pill_classes: 'Disease Classes',
   copyright: '© 2026 PlantDetective · All rights reserved',
 
-  // ── Home screen (analysis) ──
+  // home screen
   header_sub: 'Plant disease diagnosis & agricultural productivity analysis',
   btn_logout: 'Sign Out',
   logout_title: 'Sign Out',
@@ -210,7 +208,7 @@ const en: typeof tr = {
   err_gallery: 'An error occurred while opening the gallery.',
   err_analyze: 'An unexpected error occurred during analysis.',
 
-  // ── Results ──
+  // results
   results_title: 'Analysis Results',
   res_plant: 'Detected Plant',
   no_plant: 'Plant species could not be detected',
@@ -229,11 +227,11 @@ const en: typeof tr = {
   no_info: 'No information available',
   btn_new_analysis: 'New Analysis',
 
-  // ── Navigation (app.py sidebar menu) ──
+  // menu
   nav_home: 'Home / Analysis',
   nav_history: 'My Past Analyses',
 
-  // ── Home showcase section ──
+  // home showcase
   nav_powered: 'AI POWERED',
   main_title: 'Plant Disease Diagnosis System',
   main_desc:
@@ -257,7 +255,7 @@ const en: typeof tr = {
   step3_t: 'Review the Report',
   step3_d: 'Diagnosis, treatment advice and yield loss estimate, instantly.',
 
-  // ── History page ──
+  // history page
   hist_tag: 'ANALYSIS HISTORY',
   hist_title: 'My Past Analyses',
   hist_desc:
@@ -293,7 +291,7 @@ export const LANGS = { tr, en } as const;
 
 export type TranslationKey = keyof typeof tr;
 
-/** ApiError.code → seçili dildeki kullanıcı mesajı */
+/** ApiError.code'u seçili dildeki mesaja çevirir */
 export function apiErrorText(
   code: string | undefined,
   T: typeof tr,
@@ -304,7 +302,7 @@ export function apiErrorText(
   return fallback || T.err_generic;
 }
 
-// "{}" yer tutucusunu doldurur: format(T.success_reg, 'ali') → "Harika! ali ..."
+// "{}" yerine değeri koyuyor: format(T.success_reg, 'ali') -> "Harika! ali ..."
 export function format(template: string, ...values: (string | number)[]): string {
   let out = template;
   for (const value of values) {

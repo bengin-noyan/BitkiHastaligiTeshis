@@ -1,8 +1,5 @@
-// ─────────────────────────────────────────────────────────────────────
-// Dil durumu — app.py'deki st.session_state.lang'ın mobil karşılığı.
-// Giriş ekranında seçilen dil, uygulama boyunca (ana ekran dâhil) geçerli
-// olsun diye React Context ile paylaşılır.
-// ─────────────────────────────────────────────────────────────────────
+// Dil bilgisi, app.py'deki st.session_state.lang'ın mobil karşılığı.
+// Giriş ekranında seçilen dil diğer ekranlarda da geçerli olsun diye Context kullandım.
 
 import React, { createContext, useContext, useMemo, useState } from 'react';
 import { LANGS, type Lang } from '../constants/i18n';
@@ -10,7 +7,7 @@ import { LANGS, type Lang } from '../constants/i18n';
 type LanguageContextValue = {
   lang: Lang;
   setLang: (lang: Lang) => void;
-  /** Seçili dilin çeviri sözlüğü */
+  /** seçili dilin çeviri sözlüğü */
   T: (typeof LANGS)['tr'];
 };
 

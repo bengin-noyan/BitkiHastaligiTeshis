@@ -1,7 +1,5 @@
-// ─────────────────────────────────────────────────────────────────────
-// Alt navigasyon — app.py'deki koyu yeşil sidebar menüsünün mobil
-// karşılığı. Aktif satır dolu yeşil vurgu alır, pasif satırlar şeffaftır.
-// ─────────────────────────────────────────────────────────────────────
+// Alt menü, app.py'deki sidebar'ın mobil hali.
+// Aktif satır dolu yeşil, diğerleri şeffaf.
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
@@ -13,7 +11,7 @@ export type NavKey = 'home' | 'history';
 
 type Props = {
   active: NavKey;
-  /** Sayfalar arası taşınan aktif kullanıcı adı */
+  /** sayfalar arası taşıdığımız kullanıcı adı */
   username: string;
 };
 

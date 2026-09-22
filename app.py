@@ -6,13 +6,12 @@ from datetime import datetime
 from typing import Any
 import streamlit as st
 from PIL import Image
-# Ağır kütüphaneler (pandas, plotly, firebase) modül açılışında değil,
-# yalnızca gerçekten gerektiğinde (analiz/geçmiş sayfalarında) import edilir —
-# böylece login ekranı çok daha hızlı açılır.
+# pandas/plotly/firebase'i burada import etmiyorum, hangi sayfada lazımsa
+# orada import ediliyor. yoksa login ekranının açılması çok uzun sürüyordu.
 
-# ─── GÖRSEL VARLIKLAR (logo / arka plan) ────────────────────
-# assets/ klasöründeki görselleri base64 data-URI olarak, önbellekli döndürür;
-# böylece HTML/CSS içine gömülebilir ve her rerun'da diskten okunmaz.
+# ----- logo / arka plan görselleri -----
+# assets içindeki görseli base64 data-uri olarak döndürüyor, böylece css'in
+# içine gömebiliyoruz. cache koydum, yoksa her rerun'da dosyayı tekrar okuyor.
 _ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
 @st.cache_data(show_spinner=False)
@@ -27,12 +26,12 @@ def asset_data_uri(dosya_adi: str) -> str:
     except Exception:
         return ""
 
-# ─── SQL VERİTABANI BAĞLANTISI VE KURULUMU ──────────────────
+# ----- veritabanı -----
 conn = sqlite3.connect('tarimsal_analiz.db', check_same_thread=False)
 c = conn.cursor()
 
 def veritabani_kurulumu():
-    # 1. Kullanıcılar Tablosu
+    # kullanıcılar tablosu
     c.execute('''
         CREATE TABLE IF NOT EXISTS kullanicilar (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,7 +41,7 @@ def veritabani_kurulumu():
         )
     ''')
     
-    # 2. Analiz Geçmişi Tablosu
+    # analiz geçmişi tablosu
     c.execute('''
         CREATE TABLE IF NOT EXISTS analiz_gecmisi (
             islem_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,7 +60,7 @@ def veritabani_kurulumu():
     ''', (su_an,))
     conn.commit()
 
-# --- ANALİZ KAYIT FONKSİYONU ---
+# analiz sonucunu tabloya yazan fonksiyon
 def analizi_kaydet(kullanici, bitki, hastalik, skor):
     try:
         conn_kayit = sqlite3.connect('tarimsal_analiz.db', check_same_thread=False)
@@ -77,7 +76,6 @@ def analizi_kaydet(kullanici, bitki, hastalik, skor):
         print(f"SQL Kayıt Hatası: {e}")
 
 veritabani_kurulumu()
-# ────────────────────────────────────────────────────────────
 
 st.set_page_config(page_title="Tarımsal Analiz Sistemi", page_icon="🌿", layout="wide")
 
@@ -91,26 +89,24 @@ st.markdown("""
         header[data-testid="stHeader"] {
             background-color: rgba(0,0,0,0) !important;
             color: #0f172a !important;    
-        header {visibility: hidden;} /* Streamlit'in üstteki görünmez header boşluğunu yok eder */
+        header {visibility: hidden;} /* streamlit üstte boş bir header bırakıyor, onu kaldırıyorum */
     </style>
     """, unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════
-#  GLOBAL CSS — Minimalist tek renk tema (Senin Tasarımın)
-# ══════════════════════════════════════════════════════════
+# ========== genel css ==========
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-/* ===== GENEL SIFIRLA ===== */
+/* streamlit'in hazır gelen kısımlarını gizle */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header[data-testid="stHeader"] { background: transparent !important; height: 0 !important; }
-/* Sağ üstteki "Deploy" butonu gizlenir (login + ana uygulama). Araç çubuğunun
-   tamamını GİZLEME — sidebar aç/kapat düğmesi o bölgede yaşıyor. */
+/* sağ üstteki Deploy butonunu gizliyoruz.
+   dikkat: toolbar'ın hepsini gizleyince sidebar aç/kapat butonu da kayboluyor */
 [data-testid="stAppDeployButton"] { display: none !important; }
 [data-testid="stDecoration"] { display: none !important; }
-/* Sidebar aç/kapat (collapse/expand) kontrolleri HER ZAMAN görünür kalsın */
+/* sidebar aç/kapat butonu her zaman görünsün */
 [data-testid="stSidebarHeader"],
 [data-testid="stSidebarCollapseButton"],
 [data-testid="stExpandSidebarButton"] {
@@ -120,9 +116,9 @@ header[data-testid="stHeader"] { background: transparent !important; height: 0 !
     z-index: 1000000 !important;
 }
 
-/* ===== KÖK DEĞİŞKENLER — Sade tek renk paleti ===== */
+/* ===== renk değişkenleri ===== */
 :root {
-    /* Canlı/parlak yeşil palet — eski sage (#7DA78C) yerine daha doygun yeşil */
+    /* önceden #7DA78C soluk yeşil vardı, daha canlısıyla değiştirdim */
     --primary:        #2FA85A;
     --primary-dark:   #248C49;
     --primary-soft:   #e7f7ee;
@@ -257,7 +253,7 @@ html, body, [class*="css"] {
 [data-testid="stFileUploadDropzone"] * { color: var(--text-dark) !important; }
 [data-testid="stFileUploader"] section * { color: var(--text-dark) !important; }
 
-/* ── Ana sayfa görsel yükleyici — paletle uyumlu, yumuşak dropzone ─────── */
+/* ana sayfadaki dosya yükleme alanı */
 [data-testid="stFileUploader"] {
     background: linear-gradient(180deg, #ffffff 0%, var(--primary-soft) 100%) !important;
     border: 1.5px dashed var(--primary-border) !important;
@@ -282,7 +278,7 @@ html, body, [class*="css"] {
 [data-testid="stFileUploadDropzone"] {
     padding: 14px 16px !important;
 }
-/* "Drag and drop file here" ana metni — kalın ve okunabilir */
+/* "Drag and drop file here" yazısı */
 [data-testid="stFileUploaderDropzoneInstructions"] span,
 [data-testid="stFileUploadDropzoneInstructions"] span,
 [data-testid="stFileUploadDropzone"] > div > span,
@@ -292,7 +288,7 @@ html, body, [class*="css"] {
     font-size: 0.95rem !important;
     letter-spacing: -0.01em;
 }
-/* "Limit 200MB per file" alt metni — okunabilir ama hafif silik */
+/* alttaki "Limit 200MB per file" yazısı */
 [data-testid="stFileUploaderDropzoneInstructions"] small,
 [data-testid="stFileUploadDropzoneInstructions"] small,
 [data-testid="stFileUploader"] small,
@@ -303,7 +299,7 @@ html, body, [class*="css"] {
 }
 [data-testid="stFileUploadDropzone"] svg { color: var(--primary) !important; fill: var(--primary) !important; }
 
-/* Browse files düğmesi — birincil yeşil */
+/* Browse files butonu */
 [data-testid="stFileUploader"] button,
 [data-testid="stFileUploadDropzone"] button {
     background: var(--primary) !important;
@@ -325,7 +321,7 @@ html, body, [class*="css"] {
 [data-testid="stFileUploader"] button *,
 [data-testid="stFileUploadDropzone"] button * { color: #ffffff !important; }
 
-/* Sidebar içindeki uploader bu kuralları override etmemeli — paneldeki stil ayrı kalır */
+/* sidebar'daki uploader ayrı, yukarıdaki kurallar oraya bulaşmasın */
 section[data-testid="stSidebar"] [data-testid="stFileUploader"] button {
     background: var(--primary) !important;
     color: #ffffff !important;
@@ -389,7 +385,7 @@ section[data-testid="stSidebar"] .stButton > button { background: #ffffff !impor
 section[data-testid="stSidebar"] .stButton > button * { color: var(--red) !important; }
 section[data-testid="stSidebar"] .stButton > button:hover { background: var(--red-soft) !important; border-color: #fca5a5 !important; }
 
-/* Form submit butonları (Giriş Yap / Kayıt Ol) — normal primary buton ile birebir aynı görünüm */
+/* Giriş Yap / Kayıt Ol butonları da diğer butonlarla aynı görünsün */
 [data-testid="stFormSubmitButton"] { width: 100% !important; }
 [data-testid="stFormSubmitButton"] button {
     width: 100% !important; border-radius: 10px !important; font-weight: 600 !important; font-family: 'Inter', sans-serif !important;
@@ -405,7 +401,7 @@ section[data-testid="stSidebar"] .stButton > button:hover { background: var(--re
 
 .stApp img { border-radius: 12px !important; border: 1px solid var(--border) !important; box-shadow: 0 1px 3px rgba(15,23,42,0.04) !important; transition: all 0.25s ease !important; }
 .stApp img:hover { box-shadow: 0 6px 18px rgba(125,167,140,0.08) !important; }
-/* Logo görselleri bu kuralın dışında — etraflarında kutu/kenarlık/gölge OLMASIN */
+/* logolara çerçeve/gölge uygulanmasın */
 .stApp img.lp-logo,
 section[data-testid="stSidebar"] img { border: none !important; border-radius: 0 !important; box-shadow: none !important; }
 .stApp img.lp-logo:hover,
@@ -413,7 +409,7 @@ section[data-testid="stSidebar"] img:hover { box-shadow: none !important; }
 
 .stTextInput { width: 100% !important; }
 
-/* Wrapper container — flex layout so input + eye button sit side by side */
+/* input ile göz butonu yan yana dursun diye flex yaptım */
 .stTextInput [data-baseweb="input"],
 .stTextInput [data-baseweb="base-input"] {
     background: #ffffff !important;
@@ -431,7 +427,7 @@ section[data-testid="stSidebar"] img:hover { box-shadow: none !important; }
     box-shadow: 0 0 0 3px rgba(125,167,140,0.15) !important;
 }
 
-/* Input itself — flex:1 leaves room for the eye button, no overlap */
+/* flex:1 verince göz butonuna yer kalıyor, üst üste binmiyorlar */
 .stTextInput input {
     flex: 1 1 auto !important;
     min-width: 0 !important;
@@ -452,7 +448,7 @@ section[data-testid="stSidebar"] img:hover { box-shadow: none !important; }
 .stTextInput input::placeholder { color: var(--text-muted) !important; }
 .stTextInput label { color: var(--text-soft) !important; font-weight: 500 !important; font-size: 0.85rem !important; }
 
-/* Password visibility (eye) button — fixed width, sits beside input, no overlap */
+/* şifre göster/gizle butonu, genişliği sabit */
 .stTextInput button,
 .stTextInput [data-baseweb="input"] button,
 .stTextInput [data-testid="stTextInputRootElement"] button {
@@ -489,7 +485,7 @@ section[data-testid="stSidebar"] img:hover { box-shadow: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─── FIREBASE BAĞLANTISI (tembel: yalnızca ilk gerekli olduğunda başlatılır) ───
+# ----- firebase (ilk ihtiyaç olunca bağlanıyor) -----
 @st.cache_resource(show_spinner=False)
 def get_db():
     import firebase_admin
@@ -510,7 +506,7 @@ def load_model():
     os.environ["YOLO_VERBOSE"] = "False"  # Ultralytics banner/log çıktısını kapat
     from ultralytics import YOLO
     m = YOLO("plantdoc_150epoch.pt")  # modelin yüklenmesi biraz zaman alır, bu yüzden cache'liyoruz
-    # İlk gerçek analizdeki gecikmeyi önlemek için modeli boş bir görselle önceden ısıt
+    # boş bir görselle bir kere çalıştır, ilk gerçek analiz daha hızlı olsun
     try:
         m.predict(source=Image.new("RGB", (640, 640)), imgsz=640, verbose=False)
     except Exception:
@@ -518,9 +514,8 @@ def load_model():
     return m
 
 def modeli_onyukle_arkaplan():
-    """Kullanıcı login ekranında bilgilerini girerken modeli sessizce, arka planda
-    yükler. Böylece giriş sonrası ilk analiz beklemesiz olur; login ekranı ise
-    thread UI çizildikten sonra başlatıldığı için hızlı açılmaya devam eder."""
+    """Kullanıcı login ekranında şifresini yazarken modeli arka planda yüklüyor.
+    Thread'i UI çizildikten sonra başlattığım için login ekranı yavaşlamıyor."""
     if st.session_state.get("_model_onyukleme"):
         return
     st.session_state._model_onyukleme = True
@@ -532,8 +527,8 @@ def modeli_onyukle_arkaplan():
         pass
     t.start()
 
-# Firebase'den hastalık bilgisini önbellekli oku — aynı hastalık için tekrar tekrar
-# ağ sorgusu yapılmasını engeller (Streamlit her etkileşimde script'i baştan çalıştırır)
+# streamlit her tıklamada script'i baştan çalıştırdığı için cache şart,
+# yoksa aynı hastalık için defalarca firebase'e gidiyor
 @st.cache_data(ttl=3600, show_spinner=False)
 def hastalik_bilgisi_getir(db_key, lang_key):
     try:
@@ -546,10 +541,9 @@ def hastalik_bilgisi_getir(db_key, lang_key):
         print(f"Firebase okuma hatası: {e}")
     return {}
 
-# Gemini ile hastalık için gerçek zamanlı öneri üret — teşhis edilen tam hastalık
-# ismini ve bitkiyi modele gönderip yapılandırılmış (JSON) öneri alır.
-# Saf fonksiyon: st.* kullanmaz, bu sayede arka plan iş parçacığından da
-# güvenle çağrılabilir (prefetch). api_key ana iş parçacığından geçirilir.
+# Gemini'ye hastalık + bitki ismini gönderip JSON formatında öneri alıyor.
+# içerde st.* kullanmıyorum, arka plan thread'inden çağırınca hata veriyordu.
+# o yüzden api_key'i dışarıdan parametre olarak alıyor.
 def _gemini_oneri_cek(hastalik_ismi, bitki, lang_key, api_key):
     try:
         from google import genai
@@ -597,29 +591,27 @@ def _gemini_oneri_cek(hastalik_ismi, bitki, lang_key, api_key):
                 "response_mime_type": "application/json",
                 "response_schema": schema,
                 "temperature": 0.3,
-                # Küçük bir "düşünme" (reasoning) bütçesi ver: model, verim kaybı
-                # aralığını hastalığa özel muhakeme ederek belirlesin. Bütçe 0 iken
-                # hastalıktan bağımsız sabit bir aralığa (ör. %40-55) kilitleniyordu.
-                # 512 token, hastalığa göre farklılaşma sağlar ama gecikmeyi az artırır.
+                # budget 0 iken hangi hastalık olursa olsun hep %40-55 diyordu.
+                # 512 verince hastalığa göre değişiyor, gecikme de çok artmıyor.
                 "thinking_config": {"thinking_budget": 512},
             },
         )
 
         import json
         if resp.text is None:
-            return None  # boş yanıt → çağıran taraf Firestore fallback'ine düşer
+            return None  # cevap boş geldi, çağıran taraf firestore'a düşsün
         return json.loads(resp.text)
     except Exception as e:
         print(f"Gemini öneri hatası: {e}")
-        return None  # hata → çağıran taraf Firestore fallback'ine düşer
+        return None  # hata aldık, çağıran taraf firestore'a düşsün
 
 
-# Önbellekli: aynı hastalık için 24 saat tek çağrı yeter (kota/maliyet/hız).
+# aynı hastalık için 24 saat boyunca tek çağrı yetiyor (kota + hız)
 @st.cache_data(ttl=86400, show_spinner=False)
 def llm_ile_oneri_getir(hastalik_ismi, bitki, lang_key):
     api_key = st.secrets.get("GEMINI_API_KEY", "")
     if not api_key or api_key.startswith("BURAYA"):
-        return None  # key ayarlı değil → çağıran taraf Firestore'a düşer
+        return None  # key yoksa firestore'daki hazır metinlere düşüyoruz
     return _gemini_oneri_cek(hastalik_ismi, bitki, lang_key, api_key)
 
 
@@ -627,17 +619,17 @@ def llm_ile_oneri_getir(hastalik_ismi, bitki, lang_key):
 def _oneri_executor():
     from concurrent.futures import ThreadPoolExecutor
     ex = ThreadPoolExecutor(max_workers=4)
-    # google.genai import'u ~1 sn sürüyor; ilk Gemini çağrısı bu maliyeti
-    # ödemesin diye executor oluşturulur oluşturulmaz arka planda ısıt.
+    # google.genai import'u tek başına ~1 sn sürüyor. executor açılır açılmaz
+    # arka planda import ettiriyorum ki ilk çağrı bunu beklemesin.
     ex.submit(lambda: __import__("google.genai"))
     return ex
 
 
 def oneri_prefetch_baslat(det_cls, lang):
-    """Tespit biter bitmez hastalık önerilerini arka planda ve PARALEL olarak
-    Gemini'den çekmeye başlar. İstekler kutucuklu görsel çizimi, DB kaydı ve
-    sayfa render'ı ile örtüştüğü için 'Uzman raporu hazırlanıyor' beklemesi
-    belirgin şekilde kısalır; çoklu hastalıkta sıralı çağrı maliyeti kalkar."""
+    """Tespit biter bitmez önerileri arka planda paralel olarak çekmeye başlıyor.
+    Görsel çizimi ve DB kaydıyla aynı anda döndüğü için "Uzman raporu
+    hazırlanıyor" beklemesi kısalıyor. Birden fazla hastalık varsa hepsini
+    tek tek beklemek zorunda kalmıyoruz."""
     api_key = st.secrets.get("GEMINI_API_KEY", "")
     if not api_key or api_key.startswith("BURAYA") or not det_cls:
         return
@@ -645,7 +637,8 @@ def oneri_prefetch_baslat(det_cls, lang):
     sick = [c for c in det_cls if any(k in c.lower() for k in dis_keys)]
     if not sick:
         return
-    # plant_str, sonuç panelindeki üretimle BİREBİR aynı olmalı (önbellek anahtarı uyumu)
+    # dikkat: plant_str aşağıdaki sonuç panelindekiyle aynı olmak zorunda,
+    # yoksa cache anahtarı tutmuyor ve boşuna ikinci istek gidiyor
     lang_key = "TR" if lang == "Türkçe" else "EN"
     plants = set([cn.split()[0] for cn in det_cls])
     plant_str = ", ".join(CLASS_TR.get(p.lower(), p.replace('_', ' ').capitalize()) for p in plants) if lang == "Türkçe" else ", ".join(p.replace('_', ' ').capitalize() for p in plants)
@@ -659,8 +652,8 @@ def oneri_prefetch_baslat(det_cls, lang):
 
 
 def oneri_getir(hastalik_ismi, plant_str, lang_key):
-    """Önce arka plan prefetch sonucuna bakar (varsa bekler ve oturuma işler),
-    sonra oturumdaki hazır sonuçlara; ikisi de yoksa senkron önbellekli çağrıya düşer."""
+    """Önce prefetch'ten gelen sonuca bakıyor, yoksa session'da hazır duruyor mu
+    diye kontrol ediyor. İkisi de yoksa normal (bekleten) çağrıyı yapıyor."""
     anahtar = (hastalik_ismi, plant_str, lang_key)
     sonuclar = st.session_state.setdefault("oneri_sonuclar", {})
     fut = st.session_state.get("oneri_futures", {}).pop(anahtar, None)
@@ -670,7 +663,7 @@ def oneri_getir(hastalik_ismi, plant_str, lang_key):
         return sonuclar[anahtar]
     return llm_ile_oneri_getir(hastalik_ismi, plant_str, lang_key)
 
-# ─── DİL AYARLARI ────────────────────────────────────────────
+# ----- dil metinleri -----
 LANGS = {
     "Türkçe": {
         "sidebar_title": "Kontrol Paneli",
@@ -1024,10 +1017,11 @@ CLASS_TR = {
 
 
 def sinif_ismi_ceviri(name: str) -> str:
-    """Modelin İngilizce sınıf ismini ('Tomato leaf yellow virus') CLASS_TR ile
-    Türkçeye çevirir ('Domates Yaprağı Sarı Virüs'). Kelimeler boşlukla ayrılır;
-    'Bell_pepper' gibi alt çizgili terimler tek parça olarak sözlükte aranır.
-    Eşleşmeyen kelimeler baş harfi büyük tutulur, boş çeviriler (ör. 'powdery') atlanır."""
+    """Modelin ingilizce sınıf ismini CLASS_TR sözlüğüyle türkçeye çeviriyor.
+    'Tomato leaf yellow virus' -> 'Domates Yaprağı Sarı Virüs'
+    Kelimeleri boşluktan ayırıyorum, 'Bell_pepper' gibi alt çizgili olanlar
+    tek parça aranıyor. Sözlükte olmayan kelimeyi olduğu gibi bırakıp
+    baş harfini büyütüyorum, karşılığı boş olanları ise hiç yazmıyorum."""
     parcalar = []
     for token in name.split():
         tr = CLASS_TR.get(token.lower(), token.capitalize())
@@ -1037,10 +1031,9 @@ def sinif_ismi_ceviri(name: str) -> str:
 
 
 def analiz_gorseli_ciz(lang: str):
-    """session_state'teki ham tespit sonucunu (result) o anki dile göre kutucuklu
-    görsele çevirir. Türkçe seçiliyse etiketler Türkçe, İngilizce seçiliyse orijinal
-    İngilizce çizilir. Model yeniden ÇALIŞTIRILMAZ; yalnızca plot() yeniden çizilir —
-    böylece dil değişince tekrar analiz (ve tekrar DB kaydı) gerekmez."""
+    """session_state'te duran ham sonucu alıp o anki dile göre kutucuklu görseli
+    çiziyor. Model tekrar çalışmıyor, sadece çizim yeniden yapılıyor.
+    Böylece dil değişince ne yeni analiz ne de yeni DB kaydı gerekiyor."""
     res_obj = st.session_state.get("result")
     isimler = st.session_state.get("model_names", {})
     if res_obj is None:
@@ -1049,10 +1042,9 @@ def analiz_gorseli_ciz(lang: str):
         adlar = {k: sinif_ismi_ceviri(v) for k, v in isimler.items()}
     else:
         adlar = dict(isimler)
-    # plot() güven skorunu 0.94 gibi ondalık basar; yüzde (%94) göstermek için
-    # etiketler Annotator ile elle çizilir. example= Türkçe karakter içerdiğinde
-    # Annotator otomatik PIL/Unicode moduna geçer. Import, ultralytics'in tembel
-    # yüklenmesini bozmamak için fonksiyon içinde tutulur.
+    # plot() güveni 0.94 gibi basıyor, biz %94 istiyoruz. o yüzden kutucukları
+    # Annotator ile elle çiziyorum. example'a türkçe karakter verince Annotator
+    # PIL moduna geçiyor. import'u fonksiyonun içinde bıraktım.
     from ultralytics.utils.plotting import Annotator, colors
     annotator = Annotator(res_obj.orig_img.copy(), example=str(adlar))
     boxes = res_obj.boxes
@@ -1066,19 +1058,10 @@ def analiz_gorseli_ciz(lang: str):
     return annotator.result()[:, :, ::-1]
 
 
-# ══════════════════════════════════════════════════════════
-#  GİRİŞ SAYFASI — Minimalist tasarım
-# ══════════════════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════
-#  GİRİŞ SAYFASI — Minimalist tasarım
-# ══════════════════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════
-#  GİRİŞ SAYFASI — Minimalist tasarım
-# ══════════════════════════════════════════════════════════
+# ----- giriş sayfası -----
 def login_page():
-    # ─── GİRİŞ EKRANI ARKA PLANI (tarımsal drone görseli) ───
-    # Görselin üzerine hafif beyaz bir katman (overlay) koyarak kartların ve
-    # yazıların okunaklığını korurken projenin ruhuna uygun bir doku sağlarız.
+    # giriş ekranının arka planı (drone fotoğrafı)
+    # üstüne hafif beyaz bir katman koydum, yoksa kartların yazısı okunmuyor
     _bg = asset_data_uri("login_bg.jpg")
     if _bg:
         st.markdown(f"""
@@ -1088,8 +1071,8 @@ def login_page():
                 linear-gradient(180deg, rgba(248,250,252,0.06) 0%, rgba(248,250,252,0.05) 45%, rgba(248,250,252,0.14) 78%, rgba(250,250,250,0.28) 100%),
                 url("{_bg}") center top / cover no-repeat fixed !important;
         }}
-        /* Ana uygulamadaki köşe ışıltıları (radial-gradient) giriş ekranında
-           kapatılır; arka plan görseli üzerinde parlama/hâle oluşturmasınlar. */
+        /* ana uygulamadaki köşe gradient'leri burada kapalı,
+           fotoğrafın üstünde parlama gibi duruyordu */
         .stApp::before {{ background: none !important; }}
         </style>
         """, unsafe_allow_html=True)
@@ -1118,10 +1101,9 @@ def login_page():
         width: 64px; height: 64px; margin: 0 auto 20px auto; background: #ecfdf5; border: 1px solid #a7f3d0;
         border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 30px;
     }
-    /* Logo — şeffaf zeminli, arka planın üstünde serbest yüzer; drop-shadow ile
-       hem parlar hem de metin/emblem arka plandan ayrışıp öne çıkar (kutu YOK). */
-    /* Logo eski (büyük) boyutunda: 440px. max-height yalnızca çok kısa
-       pencerelerde devreye giren güvenlik payıdır; normal ekranlarda ısırmaz. */
+    /* logo şeffaf png, etrafında kutu yok. drop-shadow koydum yoksa
+       arka plandaki fotoğrafın üstünde kayboluyor */
+    /* boyut 440px. max-height sadece ekran çok kısaysa devreye giriyor */
     .lp-logo {
         display: block; width: auto; height: auto;
         max-width: min(440px, 92%); max-height: 34dvh;
@@ -1139,8 +1121,8 @@ def login_page():
         font-size: 0.74rem; line-height: 1.45; color: #64748b !important; font-weight: 500;
     }
     .lp-pill b { color: #0f172a !important; font-weight: 700; }
-    /* Alt not ve telif satırı da görselin üstünde duruyor; .lp-pill ile aynı
-       hafif beyaz hap görünümüne alınarak okunaklı hale getirilir. */
+    /* alttaki not ve telif satırı da fotoğrafın üstünde kalıyor,
+       .lp-pill ile aynı beyaz hap görünümünü verdim ki okunsun */
     .lp-note-wrap { text-align: center; margin-top: 12px; }
     .lp-footer-note {
         display: inline-block;
@@ -1155,31 +1137,29 @@ def login_page():
         font-weight: 500;
     }
 
-    /* ─── GİRİŞ FORMU — DÜZ BEYAZ KART (.st-key-login_panel) ───
-       Yalnızca form konteynerine uygulanır; arka plandaki görsel kartın
-       çevresinde/üstünde net görünür, form yazıları beyaz zeminde okunur. */
+    /* giriş formu, düz beyaz kart (.st-key-login_panel)
+       sadece form konteynerine uygulanıyor, logoya bulaşmasın */
     .st-key-login_panel {
         background: #ffffff !important;
         border: 1px solid #e5e7eb !important;
         border-radius: 20px !important;
         padding: 16px 28px 18px 28px !important;
         box-shadow: 0 24px 60px rgba(15,23,42,0.22) !important;
-        /* Form paneli (ve altındaki telif satırı) logodan biraz daha aşağıda dursun */
+        /* panel logodan biraz daha aşağıda dursun */
         margin-top: 18px !important;
-        /* Panel yanlardan daraltılır; logo (440px) kendi genişliğinde kalır. */
+        /* paneli daralttım, logo kendi genişliğinde kalsın */
         max-width: 480px !important;
         margin-left: auto !important;
         margin-right: auto !important;
     }
-    /* Form içindeki dikey boşluklar tek ekrana sığması için sıkılaştırılır. */
+    /* tek ekrana sığsın diye boşlukları kıstım */
     .st-key-login_panel [data-testid="stVerticalBlock"] { gap: 0.55rem !important; }
     .st-key-login_panel [data-testid="stForm"] { padding: 0 !important; }
     .st-key-login_panel [data-baseweb="tab"] p { font-weight: 600 !important; }
-    /* Etiketler (Kullanıcı Adı / Şifre) koyu ve okunaklı */
+    /* Kullanıcı Adı / Şifre etiketleri */
     .st-key-login_panel label p { color: #1e293b !important; font-weight: 600 !important; }
-    /* Giriş alanları — beyaz kartın üzerinde KAYBOLMASIN diye alan belirgin açık-gri
-       zemin + kenarlık alır; yazı KOYU ve KALIN; otomatik-dolu (autofill) durumunda
-       da aynı zemin/yazı korunur (Chrome grisini bastırır). */
+    /* input'lar beyaz kartın üstünde kayboluyordu, açık gri zemin + kenarlık verdim.
+       autofill için de aynı renkleri yazdım, yoksa chrome kendi grisini basıyor */
     .st-key-login_panel [data-baseweb="input"] {
         background: #eef2f7 !important;
         border: 1px solid #cbd5e1 !important;
@@ -1210,11 +1190,9 @@ def login_page():
         transition: background-color 9999s ease-in-out 0s !important;
     }
 
-    /* ─── TEK EKRAN (NO-SCROLL) YERLEŞİMİ ───
-       Giriş sayfası tam olarak görünür alan (100dvh) kadar yükseklik alır ve
-       içerik dikeyde ortalanır; sayfa kaydırma çubuğu oluşmaz. İçerik gerçekten
-       sığmazsa (çok kısa pencere) yalnızca iç konteyner kaydırılabilir kalır,
-       böylece form asla erişilemez hale gelmez. */
+    /* giriş sayfası tek ekrana sığsın, scroll çıkmasın (100dvh).
+       ekran çok kısaysa sadece içteki konteyner kayıyor,
+       yoksa forma hiç ulaşılamıyor */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
         height: 100dvh !important;
         max-height: 100dvh !important;
@@ -1231,7 +1209,7 @@ def login_page():
         overflow-y: auto !important;
         overflow-x: hidden !important;
     }
-    /* İçeriği dikeyde ortala ve üst seviye bloklar arasındaki boşluğu kıs. */
+    /* içeriği dikeyde ortala, bloklar arası boşluğu azalt */
     [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
         flex: 1 1 auto !important;
         justify-content: center !important;
@@ -1243,7 +1221,7 @@ def login_page():
     .stTabs [data-baseweb="tab-list"] { gap: 10px; justify-content: center; }
     .stTabs [data-baseweb="tab"] { padding-top: 10px; padding-bottom: 10px; }
 
-    /* Login page — language selector as a centered pill-style box */
+    /* giriş ekranındaki dil seçici, ortalanmış hap kutusu */
     .stRadio > div {
         display: flex !important;
         justify-content: center !important;
@@ -1273,10 +1251,9 @@ def login_page():
     }
     .stRadio [role="radiogroup"] label:hover { background: #f9fafb !important; }
 
-    /* Login page — şifre alanındaki göz (göster/gizle) düğmesi TERTEMİZ dursun:
-       alanın içindeki tüm iç kenarlık/ayraç/zemin/gölge sıfırlanır, yalnızca
-       en dıştaki [data-baseweb="input"] çerçevesi kalır. Böylece göz ikonunun
-       çevresinde "iç içe geçmiş çizgiler" (ayraç + çerçeve çakışması) oluşmaz. */
+    /* şifre alanındaki göz butonunun etrafında iç içe çizgiler çıkıyordu.
+       içerideki bütün kenarlık/ayraç/gölgeleri sıfırladım,
+       sadece en dıştaki [data-baseweb="input"] çerçevesi kalsın */
     .stTextInput [data-baseweb="input"] > div,
     .stTextInput [data-baseweb="base-input"],
     .stTextInput [data-testid="stTextInputRootElement"] > div {
@@ -1309,7 +1286,7 @@ def login_page():
     </style>
     """, unsafe_allow_html=True)
 
-    # ─── DİL SEÇİCİ (LANGUAGE SELECTOR) — ikon kartıyla aynı hizada, sayfada tam ortalı ───
+    # dil seçici, logonun hemen üstünde ve ortalı
     _, lc, _ = st.columns([1, 0.2, 1])
     with lc:
         st.radio(
@@ -1322,18 +1299,18 @@ def login_page():
         )
     T = LANGS[st.session_state.lang]
 
-    # Streamlit'in İngilizce "Press Enter to submit form" ipucunu gizle; her formun
-    # kendi lokalize ve sekmeye özel ipucunu form içinde ayrıca göstereceğiz.
+    # streamlit her formun altına ingilizce "Press Enter to submit form" yazıyor,
+    # onu gizleyip kendi çevirdiğimiz metni aşağıda basıyoruz
     st.markdown("""
     <style>
     [data-testid="InputInstructions"] { display: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ─── LOGO + GİRİŞ FORMU ───
+    # logo + giriş formu
     _, col, _ = st.columns([1, 1.5, 1])
     with col:
-        # LOGO — arka planın üzerinde serbest yüzer; ÇEVRESİNDE KUTU YOK.
+        # logo arka planın üstünde serbest duruyor, etrafında kutu yok
         _logo = asset_data_uri("logo_transparent.png")
         _logo_html = (
             f'<img class="lp-logo" src="{_logo}" alt="PlantDetective" />'
@@ -1345,13 +1322,13 @@ def login_page():
         </div>
         """, unsafe_allow_html=True)
 
-        # FORM — okunabilirlik için buzlu cam (frosted) panel. Stil yalnızca bu
-        # konteynerin .st-key-login_panel sınıfına uygulanır; logoya sıçramaz.
+        # form paneli buzlu cam görünümünde. stil sadece bu container'in
+        # .st-key-login_panel class'ına uygulanıyor, logoya bulaşmıyor
         with st.container(key="login_panel"):
-            # ─── SEKMELER (TABS) BAŞLANGICI ───
+            # sekmeler
             tab_giris, tab_kayit = st.tabs([T["tab_login"], T["tab_register"]])
 
-            # 1. GİRİŞ SEKME İÇERİĞİ
+            # giriş sekmesi
             with tab_giris:
                 with st.form("login_form", clear_on_submit=False, border=False):
                     username = st.text_input(T["username"], placeholder=T["username_ph"], key="login_user")
@@ -1376,7 +1353,7 @@ def login_page():
                     else:
                         st.error(T["err_invalid"])
 
-            # 2. KAYIT SEKME İÇERİĞİ
+            # kayıt sekmesi
             with tab_kayit:
                 with st.form("register_form", clear_on_submit=False, border=False):
                     new_user = st.text_input(T["new_username"], placeholder=T["new_username_ph"], key="reg_user")
@@ -1404,7 +1381,7 @@ def login_page():
                         except sqlite3.IntegrityError:
                             st.error(T["err_user_taken"])
 
-            # ─── ALT İSTATİSTİKLER ───
+            # alttaki istatistikler
             st.markdown(f"""
             <div class="lp-stats">
                 <span class="lp-pill"><b>%94+</b> {T["pill_accuracy"]}</span>
@@ -1413,27 +1390,22 @@ def login_page():
             </div>
             """, unsafe_allow_html=True)
 
-    # Sayfa sonu — yalnızca telif satırı; giriş ekranı tek ekrana sığar, kaydırma yok.
+    # sayfanın sonu, sadece telif satırı kalıyor
     st.markdown(f"""
     <div class="lp-note-wrap"><span class="lp-footer-note">{T["copyright"]}</span></div>
     """, unsafe_allow_html=True)
 
-    # Login ekranı çizildikten SONRA modeli arka planda yüklemeye başla —
-    # kullanıcı giriş bilgilerini girerken model hazırlanır, ilk analiz beklemesiz olur.
+    # modeli login ekranı çizildikten SONRA yüklemeye başlıyoruz.
+    # kullanıcı şifresini yazarken model hazır oluyor, ilk analiz beklemiyor.
     modeli_onyukle_arkaplan()
 
-# ══════════════════════════════════════════════════════════
-#  ANA UYGULAMA
-# ══════════════════════════════════════════════════════════
+# ----- ana uygulama -----
 def main_app():
-    # ══════════════════════════════════════════════════════
-    #  SIDEBAR — Logo + Dil + Sayfa Navigasyonu + Çıkış
-    # ══════════════════════════════════════════════════════
+    # ----- sidebar: logo + dil + menü + çıkış -----
     T = LANGS[st.session_state.lang]
 
-    # ── SIDEBAR — KOYU YEŞİL ADMIN-PANEL TEMASI (referans görsele göre) ──
-    # Koyu yeşil zemin, aktif satırda dolu yeşil vurgu, sage-gri bölüm başlıkları;
-    # tıklanabilir satırlar düz/şeffaf (beyaz pill YOK).
+    # sidebar teması: koyu yeşil zemin, aktif satır dolu yeşil.
+    # satırlar düz/şeffaf olacak, beyaz pill istemiyoruz.
     st.markdown("""
     <style>
     section[data-testid="stSidebar"] {
@@ -1442,17 +1414,17 @@ def main_app():
     }
     section[data-testid="stSidebar"] > div { background: transparent !important; }
     section[data-testid="stSidebar"]::before { background: #34c46a !important; }
-    /* Sidebar genel metin rengi (soluk yeşil-beyaz) */
+    /* sidebar yazı rengi */
     section[data-testid="stSidebar"], section[data-testid="stSidebar"] * { color: #cddbd2 !important; }
     section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.08) !important; margin: 0.8rem 0 !important; }
 
-    /* Bölüm başlıkları / etiketler — sage-gri (blanket kuralı ezmek için nitelendi) */
+    /* bölüm başlıkları. yukarıdaki genel kuralı ezsin diye daha özel yazdım */
     section[data-testid="stSidebar"] .sb-title { color:#7d9a8a !important; font-size:0.7rem !important; font-weight:700 !important;
         letter-spacing:0.12em !important; text-transform:uppercase !important; }
     section[data-testid="stSidebar"] .sb-hint  { color:#7d9a8a !important; font-size:0.74rem !important; font-weight:500 !important; }
     section[data-testid="stSidebar"] .sb-sub   { color:#8fae9d !important; }
 
-    /* Navigasyon & dil satırları — admin panel satır görünümü (beyaz pill YOK) */
+    /* menü ve dil satırları, admin panel görünümü (beyaz pill yok) */
     section[data-testid="stSidebar"] [role="radiogroup"] { gap: 5px !important; background: transparent !important; }
     section[data-testid="stSidebar"] [role="radiogroup"] label {
         background: transparent !important;
@@ -1482,7 +1454,7 @@ def main_app():
     section[data-testid="stSidebar"] [role="radiogroup"] label[aria-checked="true"],
     section[data-testid="stSidebar"] [role="radiogroup"] label[aria-checked="true"] * { color: #ffffff !important; }
 
-    /* Çıkış butonu — koyu zemine uygun, sırıtmayan kırmızı vurgu */
+    /* çıkış butonu, koyu zeminde sırıtmayan bir kırmızı */
     section[data-testid="stSidebar"] .stButton > button {
         background: rgba(239,68,68,0.12) !important;
         color: #fca5a5 !important;
@@ -1507,8 +1479,7 @@ def main_app():
         'border:1px solid #a7f3d0;border-radius:14px;display:flex;align-items:center;'
         'justify-content:center;font-size:26px;line-height:1;">🌿</div>'
     )
-    # Şeffaf logo, TAM GENİŞLİKTE beyaz bir kart içinde ve büyük gösterilir —
-    # referans admin-panelindeki gibi logo karta yakın/dolgun görünür.
+    # şeffaf logoyu tam genişlikte beyaz bir kartın içinde büyük gösteriyoruz
     st.sidebar.markdown(f"""
     <div style="padding:4px 0 14px 0;text-align:center;">
         <div style="background:#ffffff;border-radius:14px;padding:16px 18px;
@@ -1521,7 +1492,7 @@ def main_app():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── DİL SEÇİMİ ───────────────────────────────────────
+    # ----- dil seçimi -----
     st.sidebar.markdown(f"""
     <div style="margin:2px 0 8px 0;">
         <span class="sb-title">{T["lang_label"]}</span>
@@ -1535,10 +1506,10 @@ def main_app():
         label_visibility="collapsed",
         key="lang",
     )
-    # Dil değişimi sonrası T'yi tazele (radio bu rerun'da güncellemiş olabilir)
+    # radio bu rerun'da dili değiştirmiş olabilir, T'yi tazele
     T = LANGS[st.session_state.lang]
 
-    # Dil değiştiğinde sayfa navigasyon seçimini sıfırla
+    # dil değişince menüdeki seçimi de sıfırla
     if st.session_state.get("_lang_cache") != st.session_state.lang:
         st.session_state._lang_cache = st.session_state.lang
         if "page_nav" in st.session_state:
@@ -1546,7 +1517,7 @@ def main_app():
 
     st.sidebar.divider()
 
-    # ── SAYFA YÖNLENDİRME (NAVİGASYON) ───────────────────
+    # ----- menü -----
     st.sidebar.markdown(f"""
     <div style="margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;">
@@ -1568,7 +1539,7 @@ def main_app():
 
     st.sidebar.divider()
 
-    # ── ÇIKIŞ ────────────────────────────────────────────
+    # ----- çıkış -----
     if st.sidebar.button(T["btn_logout"], width="stretch"):
         st.session_state.logged_in = False
         st.session_state.clear()
@@ -1585,21 +1556,17 @@ def main_app():
     </div>
     """, unsafe_allow_html=True)
 
-    # ══════════════════════════════════════════════════════
-    #  SAYFA YÖNLENDİRİCİSİ
-    # ══════════════════════════════════════════════════════
+    # ----- hangi sayfa açılacak -----
     if sayfa == nav_options[0]:
         ana_analiz_sayfasi(T, st.session_state.lang)
     else:
         gecmis_analiz_sayfasi(T)
 
 
-# ══════════════════════════════════════════════════════════
-#  ANA ANALİZ SAYFASI — Fotoğraf yükleme + YOLOv8 + Rapor
-# ══════════════════════════════════════════════════════════
+# ----- ana analiz sayfası (fotoğraf yükle + model + rapor) -----
 def ana_analiz_sayfasi(T, lang):
    
-    # ── HERO BANNER — Minimalist ────────────────────────
+    # üstteki banner
     st.markdown(f"""
     <div style="
         background:#ffffff;
@@ -1654,7 +1621,7 @@ def ana_analiz_sayfasi(T, lang):
     st.write("")
     st.write("")
 
-    # ── KONTROL PANELİ (Görsel Yükleme + Güven Skoru) ────────
+    # ----- kontrol paneli (görsel yükleme + güven skoru) -----
     st.markdown(f"""
     <div style="
         background:#ffffff;
@@ -1673,9 +1640,8 @@ def ana_analiz_sayfasi(T, lang):
 
     kp1, kp2 = st.columns([1, 1.4], gap="large")
     with kp1:
-        # Sabit key: dil değişince label değişse de slider değeri (ve dolayısıyla
-        # mevcut analiz sonucu) sıfırlanmaz — aksi halde Streamlit label'ı değişen
-        # widget'ı yeni sanıp varsayılana döner ve analizi tekrar yaptırırdı.
+        # key'i sabit tutuyorum. dil değişince label de değişiyor ve streamlit
+        # widget'ı yeni sanıp slider'ı varsayılana döndürüyor, analiz baştan yapılıyordu.
         conf = st.slider(T["conf_label"], min_value=0.00, max_value=1.00, value=0.25, step=0.01, key="conf_slider")
         st.markdown(f"""
         <div style="
@@ -1706,11 +1672,11 @@ def ana_analiz_sayfasi(T, lang):
         </div>
         """, unsafe_allow_html=True)
     with kp2:
-        # Streamlit'in default İngilizce dropzone metinlerini gizleyip
-        # ::before / ::after ile seçili dile göre çevrili metinleri tek seferde yerleştir.
+        # dropzone'un ingilizce metinlerini gizleyip yerine ::before / ::after ile
+        # seçili dildeki çevirileri basıyoruz
         st.markdown(f"""
         <style>
-        /* Dropzone içindeki tüm orijinal metinleri (span/small) gizle */
+        /* dropzone içindeki orijinal yazıları gizle */
         [data-testid="stFileUploadDropzone"] span,
         [data-testid="stFileUploadDropzone"] small,
         [data-testid="stFileUploaderDropzoneInstructions"] span,
@@ -1720,7 +1686,7 @@ def ana_analiz_sayfasi(T, lang):
             font-size: 0 !important;
             line-height: 0 !important;
         }}
-        /* Ana metni yalnızca instructions konteyneri üzerinde TEK kez bas */
+        /* ana metni sadece instructions container'ında bir kere bas */
         [data-testid="stFileUploaderDropzoneInstructions"]::before,
         [data-testid="stFileUploadDropzoneInstructions"]::before {{
             content: "{T['upload_dz_main']}";
@@ -1731,7 +1697,7 @@ def ana_analiz_sayfasi(T, lang):
             line-height: 1.4 !important;
             letter-spacing: -0.01em;
         }}
-        /* Alt bilgi metni (boyut limiti / format) */
+        /* alttaki boyut/format yazısı */
         [data-testid="stFileUploaderDropzoneInstructions"]::after,
         [data-testid="stFileUploadDropzoneInstructions"]::after {{
             content: "{T['upload_dz_sub']}";
@@ -1741,7 +1707,7 @@ def ana_analiz_sayfasi(T, lang):
             font-size: 0.78rem !important;
             line-height: 1.4 !important;
         }}
-        /* Browse files butonu — orijinal metin + tüm alt elemanları sıfırla, çeviriyi enjekte et */
+        /* Browse files butonu: orijinal metni sıfırlayıp çeviriyi koyuyoruz */
         [data-testid="stFileUploadDropzone"] button,
         [data-testid="stFileUploadDropzone"] button * {{
             font-size: 0 !important;
@@ -1761,14 +1727,14 @@ def ana_analiz_sayfasi(T, lang):
     st.write("")
 
     if uploaded is not None:
-        # Görsel veya güven skoru değiştiğinde önceki analiz sonucunu sıfırla.
-        # Analiz YALNIZCA "Analizi Başlat"a tıklanınca yapılır/gösterilir; slider
-        # oynatmak ya da aynı isimli yeni bir görsel yüklemek eski sonucu göstermez.
+        # görsel ya da güven skoru değişirse eski sonucu sıfırla.
+        # analiz sadece "Analizi Başlat"a basılınca yapılıyor; slider oynatınca
+        # ya da yeni görsel yükleyince eski sonuç ekranda kalmasın.
         gorsel_kimlik = getattr(uploaded, "file_id", uploaded.name)
         if st.session_state.get("cur_img") != gorsel_kimlik or st.session_state.get("cur_conf") != conf:
             st.session_state.analiz_ok = False
-        # Görsel yüklenir yüklenmez executor'ı (ve google.genai import ısıtmasını)
-        # başlat: kullanıcı "Analizi Başlat"a basana kadar import çoktan biter.
+        # görsel yüklenir yüklenmez executor'ı başlat (google.genai import'u da ısınsın),
+        # kullanıcı butona basana kadar import çoktan bitmiş oluyor
         _oneri_executor()
         st.session_state.cur_img  = gorsel_kimlik
         st.session_state.cur_conf = conf
@@ -1782,8 +1748,8 @@ def ana_analiz_sayfasi(T, lang):
             if sonuc_gorsel is not None:
                 image_slot.image(sonuc_gorsel, caption=T["img_cap_res"], width="stretch")
             else:
-                # Ham sonuç yoksa (ör. eski oturum state'i) orijinal görseli göster;
-                # çökmemesi sayesinde alttaki eylem planı da render edilmeye devam eder.
+                # ham sonuç yoksa (eski session state'i olabilir) orijinal görseli göster.
+                # en azından patlamasın, aşağıdaki eylem planı çizilmeye devam etsin
                 image_slot.image(img, caption=T["img_cap_orig"], width="stretch")
             st.write("")
             run_btn = st.button(T["analyze_btn"], width="stretch", type="primary")
@@ -1792,10 +1758,9 @@ def ana_analiz_sayfasi(T, lang):
             with col1, st.spinner(T["spinner"]):
                 model = load_model()
                 res = model.predict(source=img, conf=conf, imgsz=640, verbose=False)
-                # Ham tespit sonucunu sakla. Kutucuklu görsel, dil değişince yeniden
-                # analiz gerektirmeden, o anki dile göre analiz_gorseli_ciz ile çizilir.
-                # (Türkçe karakterler için plot() otomatik PIL/Unicode moduna geçer.)
-                # classes ise İngilizce model.names'ten okunur; hastalık anahtar-kelime
+                # ham tespit sonucunu saklıyoruz. böylece dil değişince tekrar analiz
+                # yapmadan kutucuklu görseli o dilde yeniden çizebiliyoruz.
+                # classes'ı ingilizce model.names'ten okuyorum, hastalık kelime
                 # eşleşmesi buna bağlı.
                 r0 = res[0]
                 boxes = r0.boxes
@@ -1804,22 +1769,22 @@ def ana_analiz_sayfasi(T, lang):
                 st.session_state.classes     = [model.names[int(c)] for c in boxes.cls] if boxes is not None else []
                 st.session_state.confs       = [float(c) for c in boxes.conf] if boxes is not None else []
                 st.session_state.analiz_ok   = True
-                # Uzman raporu isteklerini HEMEN arka planda başlat: görsel çizimi,
-                # DB kaydı ve render ile paralel yürüsün (bekleme süresini kısaltır).
+                # uzman raporu isteklerini hemen arka planda başlat, görsel çizimi ve
+                # DB kaydıyla paralel gitsin diye
                 oneri_prefetch_baslat(st.session_state.classes, lang)
-                # Orijinal görselin yerine tespit sonucunu (bounding box'lı) bas
+                # orijinal görselin yerine kutucuklu halini bas
                 _analiz_gorseli = analiz_gorseli_ciz(lang)
                 if _analiz_gorseli is not None:
                     image_slot.image(_analiz_gorseli, caption=T["img_cap_res"], width="stretch")
                 
-                # ─── YENİ EKLENEN: SQL KAYIT İŞLEMİ ───
+                # sql kayıt
                 try:
                     det_cls = st.session_state.classes
                     det_conf = st.session_state.confs
                     
                     plants = set()
                     for cn in det_cls:
-                        # Boşlukla ayır; ilk parça bitki türüdür ('Bell_pepper' tek parça kalır)
+                        # boşluktan ayır, ilk parça bitki türü ('Bell_pepper' tek parça kalıyor)
                         ilk_kelime = cn.split()[0].lower()
                         plants.add(ilk_kelime)
 
@@ -1848,7 +1813,6 @@ def ana_analiz_sayfasi(T, lang):
                     st.toast(T["toast_saved"])
                 except Exception as e:
                     st.error(T["err_save"].format(e))
-                # ────────────────────────────────────────
 
         if st.session_state.get("analiz_ok"):
             with col2:
@@ -1856,8 +1820,8 @@ def ana_analiz_sayfasi(T, lang):
                 det_cls  = st.session_state.classes
                 det_conf = st.session_state.confs
 
-                # Sınıf isimleri boşlukla ayrılır; ilk parça bitki türüdür
-                # ('Bell_pepper' gibi alt çizgili terimler tek parça olarak aranır).
+                # sınıf isimleri boşluktan ayrılıyor, ilk parça bitki türü
+                # ('Bell_pepper' gibi alt çizgili olanlar tek parça)
                 plants = set([cn.split()[0] for cn in det_cls])
                 plant_str = ""
                 if plants:
@@ -1878,16 +1842,15 @@ def ana_analiz_sayfasi(T, lang):
                         st.warning(T["disease"].format(len(sick)))
                         lang_key = "TR" if lang == "Türkçe" else "EN"
 
-                        # Birincil (en yüksek güvenli) hastalığı seç ve verim kaybını
-                        # Gemini'den al. Bu çağrı aşağıdaki öneri döngüsüyle aynı olduğu
-                        # için önbellekten gelir — ekstra API maliyeti yoktur.
+                        # en yüksek güvenli hastalığı birincil sayıp verim kaybını
+                        # ondan alıyoruz. aşağıdaki döngü de aynı çağrıyı yaptığı için
+                        # cache'ten geliyor, ekstra API maliyeti yok.
                         sick_ciftler = [(c, cf) for c, cf in zip(det_cls, det_conf)
                                         if any(k in c.lower() for k in dis_keys)]
                         birincil = max(sick_ciftler, key=lambda x: x[1])[0] if sick_ciftler else sick[0]
 
-                        # Birincil hastalığı burada TEK sefer çek; hem verim kaybı metriği
-                        # hem de aşağıdaki öneri kartı bunu kullansın. Böylece aynı hastalık
-                        # için ikinci bir bekleme/spinner oluşmaz.
+                        # birincil hastalığı burada bir kere çekiyorum ki aşağıdaki
+                        # öneri kartı için ikinci kez spinner çıkmasın
                         onbellek_oneri = {}
                         with st.spinner(T["spinner_report"]):
                             vk = oneri_getir(birincil, plant_str, lang_key)
@@ -1905,7 +1868,7 @@ def ana_analiz_sayfasi(T, lang):
                                 unsafe_allow_html=True,
                             )
                         else:
-                            # Gemini yoksa/başarısızsa eski yaklaşık formüle düş
+                            # gemini çalışmazsa eski kaba formüle düşüyoruz
                             avg_conf = sum(det_conf) / len(det_conf)
                             risk = min(int(len(sick) * 15 * avg_conf) + 20, 95)
                             st.metric(T["risk_label"], f"%{risk}", f"-{risk}% Potansiyel Kayıp", delta_color="inverse")
@@ -1917,7 +1880,7 @@ def ana_analiz_sayfasi(T, lang):
                             h = dis.lower()
                             display = sinif_ismi_ceviri(dis) if lang == "Türkçe" else dis
 
-                            # Bulunan hastalığın İngilizce anahtar kelimesini belirle
+                            # hastalığın ingilizce anahtar kelimesini bul
                             db_key = "default"
                             arama_listesi = ["blight", "rust", "scab", "virus", "mold", "mildew", "spot", "rot", "scorch", "curl", "mite"]
                             
@@ -1929,19 +1892,19 @@ def ana_analiz_sayfasi(T, lang):
                             lang_key = "TR" if lang == "Türkçe" else "EN"
 
                             with st.expander(T["exp_title"].format(display), expanded=True):
-                                # 1) Birincil hastalık yukarıda çekildiyse tekrar çekme/spinner gösterme;
-                                #    değilse (ek hastalıklar) Gemini'den gerçek zamanlı çek.
+                                # birincil hastalığı yukarıda çektiysek tekrar çekme,
+                                # ek hastalık varsa onu gemini'den al
                                 if dis in onbellek_oneri:
                                     bilgi = onbellek_oneri[dis]
                                 else:
                                     with st.spinner(T["spinner_advice"]):
                                         bilgi = oneri_getir(dis, plant_str, lang_key)
 
-                                # 2) Gemini yoksa/başarısızsa mevcut Firestore statik verisine düş
+                                # gemini yoksa firestore'daki hazır metne düş
                                 if not bilgi:
                                     bilgi = hastalik_bilgisi_getir(db_key, lang_key)
 
-                                # 3) Eksik anahtarlar varsa güvenli varsayılanlardan tamamla
+                                # eksik alan kalmasın diye varsayılanlarla tamamla
                                 fallback = { "ilac": T["db_err"], "sonuc": T["db_err"], "ekonomi": T["db_err"] }
                                 bilgi = {**fallback, **bilgi}
 
@@ -1949,7 +1912,7 @@ def ana_analiz_sayfasi(T, lang):
                                 st.markdown(f"**{T['lbl_sonuc']}:** {bilgi.get('sonuc','')}")
                                 st.markdown(f"**{T['lbl_ekonomi']}:** {bilgi.get('ekonomi','')}")
     else:
-        # ── BOŞ DURUM ────────────────────────────────────
+        # boş durum (henüz görsel yüklenmedi)
         st.markdown(f"""
         <div style="text-align:center;padding:16px 24px 8px 24px;">
             <h2 style="
@@ -2075,7 +2038,7 @@ def ana_analiz_sayfasi(T, lang):
                 ">{T['step3d']}</div>
             </div>""", unsafe_allow_html=True)
 
-        # ── ÖZELLİKLER ───────────────────────────────────
+        # özellikler
         st.write("")
         st.write("")
         st.markdown(f"""
@@ -2174,18 +2137,16 @@ def ana_analiz_sayfasi(T, lang):
         """, unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════════════════
-#  GEÇMİŞ ANALİZLERİM — Dashboard (KPI + Grafikler + Tablo)
-# ══════════════════════════════════════════════════════════
+# ----- geçmiş analizlerim (KPI + grafikler + tablo) -----
 def gecmis_analiz_sayfasi(T=None):
-    # Ağır kütüphaneler yalnızca bu sayfa açıldığında import edilir (login'i yavaşlatmaz)
+    # ağır kütüphaneleri sadece bu sayfa açılınca import ediyoruz
     import pandas as pd
     import plotly.express as px
 
     if T is None:
         T = LANGS[st.session_state.lang]
 
-    # ── BAŞLIK BANNERI ────────────────────────────────────
+    # başlık banneri
     st.markdown(f"""
     <div style="
         background:#ffffff;
@@ -2231,13 +2192,13 @@ def gecmis_analiz_sayfasi(T=None):
     </div>
     """, unsafe_allow_html=True)
 
-    # ── AKTİF KULLANICI KONTROLÜ (Veri İzolasyonu) ────────
+    # aktif kullanıcı kontrolü, herkes sadece kendi kaydını görsün
     aktif_kullanici = st.session_state.get("aktif_kullanici")
     if not aktif_kullanici:
         st.error(T["err_session"])
         return
 
-    # ── VERİ ÇEKME (Sadece Aktif Kullanıcının Kayıtları) ──
+    # veri çekme
     try:
         conn_dash = sqlite3.connect("tarimsal_analiz.db", check_same_thread=False)
         df = pd.read_sql_query(
@@ -2254,15 +2215,13 @@ def gecmis_analiz_sayfasi(T=None):
         st.info(T["info_empty"])
         return
 
-    # Tarih kolonunu sıralamak için datetime'a çevir
+    # sıralama yapabilmek için tarihi datetime'a çevir
     df["tarih"] = pd.to_datetime(df["tarih"], errors="coerce")
 
-    # ══════════════════════════════════════════════════════
-    #  ÜST KATMAN — KPI METRİKLERİ
-    # ══════════════════════════════════════════════════════
+    # ----- KPI kutuları -----
     toplam_analiz = len(df)
 
-    # En sık tespit edilen hastalık ("Sağlıklı" / "Healthy" ve "Tespit Edilemedi" hariç)
+    # en çok çıkan hastalık (Sağlıklı / Healthy ve Tespit Edilemedi sayılmıyor)
     hastalik_serisi = df["hastalik_durumu"].dropna()
     hastalik_serisi = hastalik_serisi[
         ~hastalik_serisi.str.lower().str.contains("sağlıklı", na=False)
@@ -2284,12 +2243,10 @@ def gecmis_analiz_sayfasi(T=None):
     st.write("")
     st.write("")
 
-    # ══════════════════════════════════════════════════════
-    #  ORTA KATMAN — GRAFİKLER (Bar + Donut)
-    # ══════════════════════════════════════════════════════
+    # ----- grafikler (bar + donut) -----
     g1, g2 = st.columns(2, gap="large")
 
-    # ── SOL: Bitki Dağılımı (Bar Chart) ──────────────────
+    # sol: bitki dağılımı
     with g1:
         st.markdown(f"""
         <div style="margin-bottom:8px;">
@@ -2333,7 +2290,7 @@ def gecmis_analiz_sayfasi(T=None):
         )
         st.plotly_chart(fig_bar, width="stretch")
 
-    # ── SAĞ: Sağlıklı vs Enfekte (Donut Chart) ──────────
+    # sağ: sağlıklı / enfekte oranı
         with g2:
             st.markdown(f"""
             <div style="margin-bottom:8px;">
@@ -2386,9 +2343,7 @@ def gecmis_analiz_sayfasi(T=None):
             )
             st.plotly_chart(fig_donut, width="stretch")
 
-    # ══════════════════════════════════════════════════════
-    #  ALT KATMAN — DETAYLI VERİ TABLOSU
-    # ══════════════════════════════════════════════════════
+    # ----- detaylı tablo -----
     st.markdown(f"""
     <div style="margin-bottom:10px;">
         <div style="font-size:0.95rem;font-weight:700;color:#0f172a;letter-spacing:-0.01em;">
@@ -2428,9 +2383,7 @@ def gecmis_analiz_sayfasi(T=None):
 
     st.write("")
 
-    # ══════════════════════════════════════════════════════
-    #  KAYIT YÖNETİMİ — Toplu Silme İşlemi
-    # ══════════════════════════════════════════════════════
+    # ----- toplu silme -----
     with st.expander(T["delete_exp"], expanded=False):
         st.markdown(
             f"<div style='font-size:0.85rem;color:#64748b;margin-bottom:10px;'>{T['delete_desc']}</div>",
@@ -2487,9 +2440,7 @@ def gecmis_analiz_sayfasi(T=None):
             except Exception as e:
                 st.error(T["delete_err"].format(e))
 
-# ══════════════════════════════════════════════════════════
-#  UYGULAMA YÖNLENDİRİCİ
-# ══════════════════════════════════════════════════════════
+# ----- yönlendirici -----
 if not st.session_state.logged_in:
     login_page()
 else:
