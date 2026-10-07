@@ -4,3 +4,4 @@ python-multipart
 ultralytics
 Pillow
 firebase-admin
+python-dotenv

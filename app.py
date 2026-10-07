@@ -6,6 +6,13 @@ from datetime import datetime
 from typing import Any
 import streamlit as st
 from PIL import Image
+from guvenlik import (
+    admin_sifresi_al,
+    duz_metin_sifreleri_hashle,
+    sifre_dogrula,
+    sifre_hashle,
+    yukseltme_gerekli_mi,
+)
 # pandas/plotly/firebase'i burada import etmiyorum, hangi sayfada lazımsa
 # orada import ediliyor. yoksa login ekranının açılması çok uzun sürüyordu.
 
@@ -53,12 +60,28 @@ def veritabani_kurulumu():
         )
     ''')
     
-    su_an = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    c.execute('''
-        INSERT OR IGNORE INTO kullanicilar (kullanici_adi, sifre, kayit_tarihi) 
-        VALUES ('admin', 'ybs2026', ?)
-    ''', (su_an,))
     conn.commit()
+
+    # tabloda eski surumden kalan duz metin sifre varsa hash'e cevir
+    try:
+        cevrilen = duz_metin_sifreleri_hashle(conn)
+        if cevrilen:
+            print(f"{cevrilen} kullanicinin sifresi hash'e cevrildi.")
+    except Exception as e:
+        print(f"Sifre migrasyonu hatasi: {e}")
+
+    # varsayilan admin hesabi. sifre artik kodda sabit degil, ADMIN_PASSWORD
+    # ortam degiskeninden (ya da .env / secrets.toml) geliyor. tanimli degilse
+    # hesabi hic olusturmuyoruz, bos/tahmin edilebilir sifreyle acilmasin.
+    admin_sifre = admin_sifresi_al()
+    if admin_sifre:
+        su_an = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        c.execute(
+            "INSERT OR IGNORE INTO kullanicilar (kullanici_adi, sifre, kayit_tarihi) "
+            "VALUES ('admin', ?, ?)",
+            (sifre_hashle(admin_sifre), su_an),
+        )
+        conn.commit()
 
 # analiz sonucunu tabloya yazan fonksiyon
 def analizi_kaydet(kullanici, bitki, hastalik, skor):
@@ -74,6 +97,16 @@ def analizi_kaydet(kullanici, bitki, hastalik, skor):
         conn_kayit.close()
     except Exception as e:
         print(f"SQL Kayıt Hatası: {e}")
+
+# ADMIN_PASSWORD'u ortam degiskeninde bulamazsak secrets.toml'a da bakiyoruz.
+# streamlit tarafinda sifreyi oraya yazmak daha pratik, o dosya .gitignore'da.
+if not os.environ.get("ADMIN_PASSWORD"):
+    try:
+        _admin_secret = st.secrets.get("ADMIN_PASSWORD", "")
+        if _admin_secret:
+            os.environ["ADMIN_PASSWORD"] = str(_admin_secret)
+    except Exception:
+        pass  # secrets.toml yoksa st.secrets patliyor, onemli degil
 
 veritabani_kurulumu()
 
@@ -1336,10 +1369,24 @@ def login_page():
                     kullanici_adi_girilen = username.strip().lower()
                     sifre_girilen = password.strip()
 
+                    # sifreyi artik SQL'de karsilastiramiyoruz, hash'li duruyor.
+                    # kullaniciyi cekip dogrulamayi python tarafinda yapiyoruz.
                     conn = sqlite3.connect('tarimsal_analiz.db', check_same_thread=False)
                     c = conn.cursor()
-                    c.execute("SELECT * FROM kullanicilar WHERE kullanici_adi=? AND sifre=?", (kullanici_adi_girilen, sifre_girilen))
-                    kullanici_var_mi = c.fetchone()
+                    c.execute("SELECT id, sifre FROM kullanicilar WHERE kullanici_adi=?",
+                              (kullanici_adi_girilen,))
+                    satir = c.fetchone()
+                    kullanici_var_mi = bool(satir) and sifre_dogrula(sifre_girilen, satir[1])
+
+                    # giris dogruysa ve kayit eski formattaysa sessizce yukselt.
+                    # duz metin sifre sadece bu an elimizde, firsati kaciyoruz.
+                    if kullanici_var_mi and yukseltme_gerekli_mi(satir[1]):
+                        try:
+                            c.execute("UPDATE kullanicilar SET sifre=? WHERE id=?",
+                                      (sifre_hashle(sifre_girilen), satir[0]))
+                            conn.commit()
+                        except Exception as e:
+                            print(f"Sifre yukseltme hatasi: {e}")
                     conn.close()
 
                     if kullanici_var_mi:
@@ -1370,7 +1417,7 @@ def login_page():
                             su_an = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                             c.execute("INSERT INTO kullanicilar (kullanici_adi, sifre, kayit_tarihi) VALUES (?, ?, ?)",
-                                      (new_user.strip().lower(), new_pass.strip(), su_an))
+                                      (new_user.strip().lower(), sifre_hashle(new_pass.strip()), su_an))
                             conn.commit()
                             conn.close()
                             st.success(T["success_reg"].format(new_user))

@@ -7,7 +7,7 @@ Sistemin ilk versiyonlarında spesifik bitkiler (örn. domates) üzerine çalı�
 
 ## Öne Çıkan Sistem Özellikleri
 Proje sadece bir yapay zeka modelinden ibaret değildir; son kullanıcıya hitap eden dinamik bir mimariye sahiptir:
-* **Güvenli Kimlik Doğrulama:** Kullanıcıların kendilerine ait hesaplar oluşturabildiği ve güvenli giriş yapabildiği (Login/Register) veritabanı destekli oturum yönetimi.
+* **Güvenli Kimlik Doğrulama:** Kullanıcıların kendilerine ait hesaplar oluşturabildiği ve güvenli giriş yapabildiği (Login/Register) veritabanı destekli oturum yönetimi. Şifreler düz metin olarak değil, kullanıcı başına ayrı tuz ile PBKDF2-HMAC-SHA256 hash'i olarak saklanır; varsayılan yönetici şifresi koda gömülü değil, ortam değişkeninden okunur.
 * **Kurumsal Hafıza (Loglama):** Yapılan her bir yapay zeka analizinin; tarihi, bitki türü, hastalık durumu, yapay zeka güven skoru ve analiz eden kişi bilgisiyle birlikte SQLite veritabanına otomatik ve kalıcı olarak kaydedilmesi.
 * **Minimalist UI/UX:** Çiftçilerin ve ziraat mühendislerinin kolayca kullanabileceği, modern ve göz yormayan (Zümrüt Yeşili) web arayüzü tasarımı.
 * **Akıllı Raporlama:** Hastalık tespit edildiğinde sadece ismi değil; tahmini verim kaybı riski, eylem planı, önerilen ilaçlar ve finansal etkileri kapsayan dinamik rapor sunumu.
@@ -38,7 +38,12 @@ Projeyi kendi yerel bilgisayarınızda (localhost) tam arayüzüyle birlikte aya
 
 ```bash
 # 1. Gerekli kütüphanelerin kurulumu (Eğer yüklü değilse)
-pip install ultralytics streamlit pillow firebase-admin
+pip install ultralytics streamlit pillow firebase-admin python-dotenv
 
-# 2. Web uygulamasını başlatma
+# 2. Ortam değişkenlerini ayarlama
+#    .env.ornek dosyasını .env adıyla kopyalayıp ADMIN_PASSWORD değerini girin.
+#    Tanımlanmazsa varsayılan admin hesabı oluşturulmaz.
+cp .env.ornek .env
+
+# 3. Web uygulamasını başlatma
 streamlit run app.py

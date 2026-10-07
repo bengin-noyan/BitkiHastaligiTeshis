@@ -28,9 +28,19 @@ Sanal ortam `.venv1` (Python 3.12). Bütün bağımlılıklar kurulu durumda.
 cd mobile && npm start
 ```
 
-Varsayılan `admin` kullanıcısı ilk açılışta `veritabani_kurulumu()` içinde
-DB'ye ekleniyor. Şifre app.py'de sabit yazılı, oradan bakın. Depo public
-olduğu için şifreyi bu dosyaya veya başka bir dokümana kopyalamayın.
+Varsayılan `admin` hesabının şifresi `ADMIN_PASSWORD` ortam değişkeninden
+okunuyor. Tanımlı değilse hesap hiç oluşturulmuyor. `.env.ornek` dosyasını
+`.env` adıyla kopyalayıp doldurun (`.env` gitignore'da). Streamlit tarafı
+`.streamlit/secrets.toml` içindeki `ADMIN_PASSWORD` anahtarını da okuyor.
+
+Şifre belirlemek / sıfırlamak için:
+
+```bash
+.venv1/Scripts/python.exe sifre_ayarla.py admin
+```
+
+Şifreyi komut satırına argüman olarak vermeyin, kabuk geçmişine düşüyor.
+Script `getpass` ile soruyor.
 
 Model değerlendirme / confusion matrix için: `python degerlendir.py`
 (datasets/ klasörü gerekiyor, repoda yok).
@@ -40,6 +50,9 @@ Model değerlendirme / confusion matrix için: `python degerlendir.py`
 | Dosya | Ne yapıyor |
 |---|---|
 | `app.py` | Streamlit uygulaması. CSS, DB, model, Gemini, 3 sayfa, hepsi burada |
+| `guvenlik.py` | Şifre hash'leme/doğrulama. app.py ve api_server.py ortak kullanıyor |
+| `sifre_ayarla.py` | Kullanıcı şifresi belirleme/sıfırlama scripti |
+| `.env.ornek` | Ortam değişkeni şablonu. Kopyasını `.env` olarak doldurun |
 | `api_server.py` | Mobil için REST uçları: /login /register /analyze /history /history/delete |
 | `plantdoc_150epoch.pt` | Eğitilmiş YOLOv8m modeli, 29 sınıf, ~155 MB (gitignore'da) |
 | `tarimsal_analiz.db` | SQLite: `kullanicilar` + `analiz_gecmisi` tabloları (gitignore'da) |
@@ -108,7 +121,27 @@ elle yazılmış yerel IP. Ağ değişince güncellenmesi gerekiyor.
 - Değişken ve fonksiyon isimleri Türkçe (`hastalik_bilgisi_getir`, `analizi_kaydet`).
 - Commit mesajlarına `Co-Authored-By: Claude` eklenmiyor.
 
-## Sırlar
+## Güvenlik
 
-`firebase_key.json`, `*.db`, `.streamlit/secrets.toml` ve `*.pt` gitignore'da.
-Bunların içeriğini commit'e veya log'a yazmayın.
+**Şifreler.** `kullanicilar.sifre` alanında PBKDF2-HMAC-SHA256 hash'i duruyor,
+format `pbkdf2_sha256$<iterasyon>$<tuz_b64>$<hash_b64>`. Her kullanıcının kendi
+tuzu var. Bütün hash işleri `guvenlik.py` içinde, iki arayüz de oradan import
+ediyor. Yeni bir giriş/kayıt yolu eklerseniz şifreyi SQL'de karşılaştırmayın,
+kullanıcıyı çekip `sifre_dogrula()` kullanın.
+
+İterasyon sayısını yükseltirseniz eski kayıtlar bozulmuyor: iterasyon hash
+string'inin içinde yazılı, `yukseltme_gerekli_mi()` düşük olanları yakalıyor ve
+kullanıcı giriş yaptığı anda kayıt sessizce yeni formata çevriliyor.
+
+`veritabani_kurulumu()` her açılışta düz metin kalmış şifreleri hash'liyor
+(`duz_metin_sifreleri_hashle`). Bir kere çevrildikten sonra maliyeti sıfır.
+
+**Eksik kalanlar.** Şifre karmaşıklık kuralı yok (`sifre_ayarla.py` 8 karakter
+istiyor ama arayüzler istemiyor), kaba kuvvete karşı deneme sınırı yok, oturum
+`st.session_state` dışında bir yere bağlı değil. API uçları kimlik doğrulaması
+istemiyor; `/history` kullanıcı adını sorgu parametresinden alıyor, yani herkes
+herkesin geçmişini okuyabilir. Bunlar bilinen açıklar.
+
+**Sırlar.** `firebase_key.json`, `.env`, `*.db`, `.streamlit/secrets.toml` ve
+`*.pt` gitignore'da. Bunların içeriğini commit'e, dokümana veya log'a yazmayın.
+Depo public.

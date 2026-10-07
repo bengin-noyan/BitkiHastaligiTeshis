@@ -26,6 +26,7 @@ Plant-Disease-1/
 .DS_Store
 
 # Güvenlik ve Yerel Veritabanı (ÇOK KRİTİK)
+.env
 firebase_key.json
 *.db
 .streamlit/secrets.toml

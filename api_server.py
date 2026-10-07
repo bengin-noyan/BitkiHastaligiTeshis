@@ -21,6 +21,8 @@ from PIL import Image
 from pydantic import BaseModel
 from ultralytics import YOLO
 
+from guvenlik import sifre_dogrula, sifre_hashle, yukseltme_gerekli_mi
+
 # ---------- ayarlar ----------
 
 # bu dosyanın durduğu klasör
@@ -290,18 +292,33 @@ def login(request: LoginRequest):
     """
     Kullanıcı adı + şifreyi SQLite'tan kontrol ediyor.
     Tablo: kullanicilar (id, kullanici_adi, sifre, kayit_tarihi)
+
+    Şifre hash'li tutulduğu için karşılaştırmayı SQL'de değil burada yapıyoruz.
+    app.py'deki giriş akışıyla aynı mantık, ortak kod guvenlik.py içinde.
     """
     try:
         conn = get_sqlite_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT * FROM kullanicilar WHERE kullanici_adi=? AND sifre=?",
-            (request.username, request.password),
+            "SELECT id, sifre FROM kullanicilar WHERE kullanici_adi=?",
+            (request.username,),
         )
-        user = cursor.fetchone()
+        row = cursor.fetchone()
+        gecerli = bool(row) and sifre_dogrula(request.password, row[1])
+
+        # eski formattaki kaydı giriş anında yeni formata çeviriyoruz
+        if gecerli and yukseltme_gerekli_mi(row[1]):
+            try:
+                cursor.execute(
+                    "UPDATE kullanicilar SET sifre=? WHERE id=?",
+                    (sifre_hashle(request.password), row[0]),
+                )
+                conn.commit()
+            except Exception as e:
+                print(f"[UYARI] Sifre yukseltilemedi: {e}")
         conn.close()
 
-        if user:
+        if gecerli:
             return LoginResponse(success=True, username=request.username)
         else:
             return LoginResponse(success=False, username="")
@@ -331,7 +348,7 @@ def register(request: RegisterRequest):
         su_an = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute(
             "INSERT INTO kullanicilar (kullanici_adi, sifre, kayit_tarihi) VALUES (?, ?, ?)",
-            (kullanici_adi, sifre, su_an),
+            (kullanici_adi, sifre_hashle(sifre), su_an),
         )
         conn.commit()
         conn.close()
