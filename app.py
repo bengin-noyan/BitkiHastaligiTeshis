@@ -86,10 +86,6 @@ st.markdown("""
             padding-bottom: 1rem !important;
             margin-top: 0 !important;
         }
-        header[data-testid="stHeader"] {
-            background-color: rgba(0,0,0,0) !important;
-            color: #0f172a !important;    
-        header {visibility: hidden;} /* streamlit üstte boş bir header bırakıyor, onu kaldırıyorum */
     </style>
     """, unsafe_allow_html=True)
 
