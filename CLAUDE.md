@@ -28,7 +28,9 @@ Sanal ortam `.venv1` (Python 3.12). Bütün bağımlılıklar kurulu durumda.
 cd mobile && npm start
 ```
 
-Varsayılan giriş: `admin` / `ybs2026` (ilk açılışta DB'ye otomatik ekleniyor).
+Varsayılan `admin` kullanıcısı ilk açılışta `veritabani_kurulumu()` içinde
+DB'ye ekleniyor. Şifre app.py'de sabit yazılı, oradan bakın. Depo public
+olduğu için şifreyi bu dosyaya veya başka bir dokümana kopyalamayın.
 
 Model değerlendirme / confusion matrix için: `python degerlendir.py`
 (datasets/ klasörü gerekiyor, repoda yok).
